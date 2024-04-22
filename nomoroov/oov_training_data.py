@@ -4,7 +4,10 @@ import abc
 from typing import Iterable, Any
 
 from .base_nlp import Doc
+from .get_logger import get_logger
 
+
+logger = get_logger(__file__)
 
 # def generate(target):
 #     caches = set()
@@ -76,6 +79,36 @@ class InMemoryDataCollector(DataCollectorBase):
     @property
     def data(self):
         return self._data
+
+
+class CsvFileDataCollector(DataCollectorBase):
+    def __init__(self, filepath, batch_size):
+        self.filepath = filepath
+        self.batch_size = batch_size
+        self.data = []
+        self.counter = 0
+
+        # Clear data if file exists
+        with open(filepath, mode='w') as fd:
+            logger.info(f'Clear all data in  file {filepath} (if exists)')
+            fd.write('')
+
+
+    def collect(self, item: tuple[Any, Any]):
+        self.data.append(item)
+        self.counter += 1
+
+        if self.counter >= self.batch_size:
+            self.save_data()
+            self.data= []
+            self.counter = 0
+
+    def save_data(self):
+        with open(self.filepath, mode='a') as fd:
+            rows = ""
+            for item in self.data:
+                rows = rows + f"{item[0]}\t{item[1]}\n"
+            fd.write(rows)
 
 
 def create_cache():
@@ -208,7 +241,7 @@ def cook_training_data(
 #     return saved_file
 
 
-# def save_training_data():
-#     saved_file = f'{TRAINING_DATA_DIR}/{target}_in_pairs.csv'
-#     with open(saved_file, mode='w') as fd:
-#         pass
+def save_training_data():
+    filepath = f'{TRAINING_DATA_DIR}/{target}_in_pairs.csv'
+    with open(filepath, mode='w') as fd:
+        pass

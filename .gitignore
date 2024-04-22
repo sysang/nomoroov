@@ -153,4 +153,7 @@ dmypy.json
 cython_debug/
 
 tmp/
+oov_training_data/
+
 working.ipynb
+tryit.py
