@@ -6,18 +6,22 @@ import pytest
 test_parameters = [
     (
         iter(range(1, 5)),
+        5,
         set([(1, 2), (2, 3), (3, 4), (2, 4), (1, 3), (1, 4)])
     ),
     (
         iter(range(1, 6)),
+        5,
         set([(1, 2), (2, 3), (3, 4), (4, 5), (3, 5), (2, 4), (2, 5), (1, 3), (1, 4), (1, 5)])
     ),
     (
         iter(range(1, 7)),
+        5,
         set([(1, 2), (2, 3), (3, 4), (4, 5), (3, 5), (2, 4), (2, 5), (1, 3), (1, 4), (1, 5)]),
     ),
     (
         iter(range(1, 8)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5), (3, 5), (2, 4), (2, 5), (1, 3), (1, 4), (1, 5),
@@ -27,6 +31,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 9)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5), (3, 5), (2, 4), (2, 5), (1, 3), (1, 4), (1, 5),
@@ -36,6 +41,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 10)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -50,6 +56,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 11)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -65,6 +72,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 12)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -80,6 +88,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 16)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -99,6 +108,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 17)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -118,6 +128,7 @@ test_parameters = [
     ),
     (
         iter(range(1, 20)),
+        5,
         set(
             [
                 (1, 2), (2, 3), (3, 4), (4, 5),
@@ -141,10 +152,10 @@ test_parameters = [
 ]
 
 
-@pytest.mark.parametrize("list_of_item,expected", test_parameters)
-def test_cook_training_data(list_of_item, expected):
+@pytest.mark.parametrize("list_of_item,window_size,expected", test_parameters)
+def test_cook_training_data(list_of_item, window_size, expected):
     data_collector = InMemoryDataCollector()
 
-    cook_training_data(list_of_item, data_collector=data_collector, window_size=5)
+    cook_training_data(list_of_item, data_collector=data_collector, window_size=window_size)
 
     assert expected == set(data_collector.data)
