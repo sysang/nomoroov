@@ -1,6 +1,7 @@
 import hashlib
 import itertools
-from typing import Iterable
+import abc
+from typing import Iterable, Any
 
 from .base_nlp import Doc
 
@@ -50,7 +51,33 @@ from .base_nlp import Doc
 #                     raw_data.append(text)
 
 #     return save_data(target, raw_data)
+
 TRAINING_DATA_DIR = 'oov_training_data'
+
+
+class DataCollectorBase(abc.ABC):
+    @abc.abstractmethod
+    def collect(self, item: Any):
+        pass
+
+
+class PseudoDataCollector(DataCollectorBase):
+    def collect(self, item: Any):
+        print(item)
+
+
+class InMemoryDataCollector(DataCollectorBase):
+    def __init__(self):
+        self._data = []
+
+    def collect(self, item):
+        self._data.append(item)
+
+    @property
+    def data(self):
+        return self._data
+
+
 def create_cache():
     caches = set()
 
@@ -100,10 +127,60 @@ def filter_data_by_targeted_oov(target: str, docs: Iterable[Doc]):
             yield doc
 
 
-def cook_training_data(list_of_num, start=0):
-    for num in list_of_num:
-        it0 = itertools.tee(list_of_num, 1)[0]
-        cook_training_data(it0)
+def cook_training_data(
+    list_of_item: Iterable[Any],
+    data_collector: DataCollectorBase = PseudoDataCollector(),
+    window_size=50,
+    depth_level=0,
+    ended_level=0,
+    prev_item=None,
+    end_item=None,
+    counter=0,
+):
+    current_counter = counter
+    for item in list_of_item:
+        current_level = depth_level + 1
+
+        if prev_item is None:
+            current_counter = current_counter + 1
+
+        if prev_item is not None:
+            data_collector.collect((prev_item, item))
+
+        if item == end_item:
+            return ended_level, end_item, current_counter
+
+        if current_level < window_size and current_level > ended_level:
+            it0, it1 = itertools.tee(list_of_item)
+            ended_level, end_item, current_counter = cook_training_data(
+                    list_of_item=it1,
+                    data_collector=data_collector,
+                    window_size=window_size,
+                    depth_level=current_level,
+                    ended_level=ended_level,
+                    prev_item=item,
+                    end_item=end_item,
+                    counter=current_counter + 1,
+                    )
+
+        if current_level == window_size:
+            return current_level, item, current_counter
+
+        if current_counter % window_size == 1 and prev_item is None:
+            it0, it1 = itertools.tee(list_of_item)
+            it2 = itertools.chain(iter([item]), it1)
+            ended_level, end_item, counter = cook_training_data(
+                list_of_item=it2,
+                data_collector=data_collector,
+                window_size=window_size,
+                depth_level=0,
+                ended_level=0,
+                prev_item=None,
+                end_item=None,
+                counter=current_counter - 1,
+            )
+
+    return depth_level, end_item, current_counter
 
 
 # def cook_training_data(target, docs: Iterable[doc]):
