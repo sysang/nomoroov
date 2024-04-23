@@ -1,59 +1,14 @@
 import hashlib
 import itertools
 import abc
-from typing import Iterable, Any
+from typing import Iterable, Any, Union
 
-from .base_nlp import Doc
+from .base_nlp import Doc, Token
 from .get_logger import get_logger
 
 
 logger = get_logger(__file__)
 
-# def generate(target):
-#     caches = set()
-#     raw_data = []
-#     for file in corpuses:
-#         with open(f"corpus/{file}", newline='') as fd:
-#             lines = fd.readlines()
-#             for line_ in list (lines):
-#                 line = line_.strip()
-
-#                 m = hashlib.sha256()
-#                 m.update(line.encode())
-#                 encoded = m.hexdigest()
-#                 if encoded in caches:
-#                     continue
-#                 else:
-#                     caches.add(encoded)
-
-#                 doc = nlp(line)
-
-#                 if len(doc) < 6:
-#                     continue
-
-#                 tokens = [ token.text for token in doc ]
-#                 if target not in tokens and target != unrecognized_token:
-#                     continue
-
-#                 oov_count = 0
-#                 oov_token = None
-
-#                 for token in doc:
-#                     if token.is_oov:
-#                         oov_count += 1
-#                         oov_token = token
-
-#                     if oov_count >= 2: 
-#                         continue
-
-#                     if target is unrecognized_token:
-#                         text = line.replace(token.text, unrecognized_token)
-#                     else:
-#                         text = line
-
-#                     raw_data.append(text)
-
-#     return save_data(target, raw_data)
 
 TRAINING_DATA_DIR = 'oov_training_data'
 
@@ -125,39 +80,76 @@ def create_cache():
 
     def is_cached(text: str):
         encoded = hash_text(text)
-        return encoded in caches
+        if encoded in caches:
+            return True
+        else:
+            add_to_cache(text)
+            return False
 
-    return (add_to_cache, is_cached)
+
+    return (is_cached, add_to_cache)
 
 
-def filter_data_by_targeted_oov(target: str, docs: Iterable[Doc]):
+def is_short_doc(doc: Doc):
+    return len(doc.tokens) < 6;
+
+
+def has_one_oov(doc: Doc) -> Union[Token, None]:
+    oov_count = 0
+    oov_token = None
+    for token in doc.tokens:
+        if token.is_oov:
+            oov_count += 1
+            oov_token = token
+
+        if oov_count >= 2: 
+            return None
+
+    if oov_count == 0:
+        return None
+
+    return oov_token
+
+
+def filter_data_by_targeted_oov(target: str, docs: Iterable[Doc]) -> Iterable[str]:
     """ Include only text that has one oov, which is the target. """
 
-    add_to_cache, is_cached = create_cache()
+    is_cached, _ = create_cache()
 
     for doc in docs:
         # To exclude duplicated texts
         if is_cached(doc.text):
             continue
-        else:
-            add_to_cache(doc.text)
 
         # To exclude short text
-        if len(doc.tokens) < 6:
+        if is_short_doc(doc):
             continue
 
-        oov_count = 0
-        oov_token = None
-        for token in doc.tokens:
-            if token.is_oov:
-                oov_count += 1
-                oov_token = token
+        oov_token = has_one_oov(doc)
+        if oov_token is not None and oov_token.text == target:
+            yield doc.text
 
-            if oov_count >= 2: 
-                break
-        
-        if oov_count == 1 and oov_token is not None and oov_token.text == target:
-            yield doc
+
+def filter_data_by_unrecognized_oov(targets: str, unrecognized_token: str, docs: Iterable[Doc]):
+    """ 
+        Include only text that has one oov, which is the unrecognized token
+        (one that is not in list of targeted tokens)
+    """
+
+    is_cached, _ = create_cache()
+
+    for doc in docs:
+        # To exclude duplicated texts
+        if is_cached(doc.text):
+            continue
+
+        # To exclude short text
+        if is_short_doc(doc):
+            continue
+
+        oov_token = has_one_oov(doc)
+        if oov_token is not None and oov_token.text not in targets:
+            yield doc.text.replace(oov_token.text, unrecognized_token)
 
 
 def cook_training_data(
@@ -215,33 +207,3 @@ def cook_training_data(
 
     return depth_level, end_item, current_counter
 
-
-# def cook_training_data(target, docs: Iterable[doc]):
-#     saved_file = f'oov_training_data/{target}_in_pairs.csv'
-#     quantity = len(raw_data)
-
-#     with open(saved_file, mode='w') as fd:
-
-#         if target is not unrecognized_token: 
-#             for i in range(quantity - 2): 
-#                 for j in range(i + 1, quantity - 1):
-#                      data = f"{raw_data[i]}\t{raw_data[j]}\n" 
-#                      fd.write(data)
-#         else:
-#             caches = set() 
-#             for i in range(quantity): 
-#                 while True: 
-#                     j = random.choice (range(quantity))
-#                     if i != j and (i, j) not in caches:
-#                         break
-#                 caches.add((i, j)) 
-#                 data = f"{raw_data[i]}\t{raw_data[j]}\n"
-#                 fd.write(data)
-
-#     return saved_file
-
-
-def save_training_data():
-    filepath = f'{TRAINING_DATA_DIR}/{target}_in_pairs.csv'
-    with open(filepath, mode='w') as fd:
-        pass
