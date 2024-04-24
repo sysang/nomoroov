@@ -1,7 +1,7 @@
 import pytest
 
 from nomoroov.oov_training_data import (
-    cook_training_data,
+    _cook_training_data,
     InMemoryDataCollector,
     filter_data_by_targeted_oov
 )

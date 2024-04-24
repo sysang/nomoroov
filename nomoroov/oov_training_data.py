@@ -18,10 +18,17 @@ class DataCollectorBase(abc.ABC):
     def collect(self, item: Any):
         pass
 
+    @abc.abstractmethod
+    def finalize(self):
+        pass
+
 
 class PseudoDataCollector(DataCollectorBase):
     def collect(self, item: Any):
         print(item)
+
+    def finalize(self):
+        pass
 
 
 class InMemoryDataCollector(DataCollectorBase):
@@ -35,19 +42,26 @@ class InMemoryDataCollector(DataCollectorBase):
     def data(self):
         return self._data
 
+    def finalize(self):
+        pass
+
 
 class CsvFileDataCollector(DataCollectorBase):
-    def __init__(self, filepath, batch_size):
+    def __init__(self, filepath, batch_size=500):
         self.filepath = filepath
         self.batch_size = batch_size
-        self.data = []
-        self.counter = 0
+
+        self.init_state()
 
         # Clear data if file exists
         with open(filepath, mode='w') as fd:
             logger.info(f'Clear all data in  file {filepath} (if exists)')
             fd.write('')
 
+    def init_state(self):
+        self.data = []
+        self.counter = 0
+        self.batch_number = 1
 
     def collect(self, item: tuple[Any, Any]):
         self.data.append(item)
@@ -55,15 +69,19 @@ class CsvFileDataCollector(DataCollectorBase):
 
         if self.counter >= self.batch_size:
             self.save_data()
-            self.data= []
-            self.counter = 0
+            self.finalize()
+
+    def finalize(self):
+        self.save_data()
+        self.init_state()
 
     def save_data(self):
         with open(self.filepath, mode='a') as fd:
-            rows = ""
             for item in self.data:
-                rows = rows + f"{item[0]}\t{item[1]}\n"
-            fd.write(rows)
+                item0, item1 = (item[0].strip(), item[1].strip())
+                fd.write(f"{item0}\t{item1}\n")
+            logger.info(f'Store data to {self.filepath}, batch size:\
+                    {self.batch_size}, batch number: {self.batch_number}')
 
 
 def create_cache():
@@ -152,7 +170,7 @@ def filter_data_by_unrecognized_oov(targets: str, unrecognized_token: str, docs:
             yield doc.text.replace(oov_token.text, unrecognized_token)
 
 
-def cook_training_data(
+def _cook_training_data(
     list_of_item: Iterable[Any],
     data_collector: DataCollectorBase = PseudoDataCollector(),
     window_size=50,
@@ -177,7 +195,7 @@ def cook_training_data(
 
         if current_level < window_size and current_level > ended_level:
             it0, it1 = itertools.tee(list_of_item)
-            ended_level, end_item, current_counter = cook_training_data(
+            ended_level, end_item, current_counter = _cook_training_data(
                     list_of_item=it1,
                     data_collector=data_collector,
                     window_size=window_size,
@@ -194,7 +212,7 @@ def cook_training_data(
         if current_counter % window_size == 1 and prev_item is None:
             it0, it1 = itertools.tee(list_of_item)
             it2 = itertools.chain(iter([item]), it1)
-            ended_level, end_item, counter = cook_training_data(
+            ended_level, end_item, counter = _cook_training_data(
                 list_of_item=it2,
                 data_collector=data_collector,
                 window_size=window_size,
@@ -207,3 +225,16 @@ def cook_training_data(
 
     return depth_level, end_item, current_counter
 
+
+def cook_training_data(
+    list_of_item: Iterable[Any],
+    data_collector: DataCollectorBase = PseudoDataCollector(),
+    window_size=50
+):
+    """ Wrapper to ensure that data_collector always store remaining data (not stacked to one full batch)"""
+    _cook_training_data(
+        list_of_item=list_of_item,
+        data_collector=data_collector,
+        window_size=window_size,
+    )
+    data_collector.finalize();

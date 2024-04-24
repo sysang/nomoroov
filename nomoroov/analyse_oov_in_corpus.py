@@ -25,16 +25,3 @@ def count_oov(docs: Iterable[Doc]) -> dict[str, int]:
 
     return sorted_oov_data
 
-
-def analyse_oov_in_corpus(
-    nlp: BaseNlp,
-    datasource: DatasourceBase
-) -> dict[str, int]:
-    def tokenizing_iterator(corpus: Iterable[str]):
-        for line in corpus:
-            yield nlp.tokenize(line.strip())
-
-    corpus = datasource.read()
-    sequences = tokenizing_iterator(corpus)
-
-    return count_oov(sequences)
