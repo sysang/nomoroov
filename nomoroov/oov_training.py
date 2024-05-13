@@ -1,18 +1,57 @@
 import math
+import random
 
 import torch
 from torch import inn
 from torch.utils.data import Dataloader
 
 import spacy
-import numpy
+import numpy as np
 
 from oov_embedding_model import OovEmbbeding
 from process_data import process_data 
 from oov_training_setup import targets, unrecognized_token
 from cook_oov_training_data import generate
 
+
 BATCH_SIZE = 128
+
+
+def process_data(data_source, nlp, todevice):
+
+    with open(data_source, mode='r', encoding='utf-8') as fd: 
+        reader = csv.reader(fd, delimiter='\t')
+
+        data = []
+        for item in reader:
+            if len(item) != 2:
+                continue
+
+            sample1, sample 2 =item
+
+            doc1 = nlp(sample1)
+            dim_size = len(doc1.vector)
+            seq_length1 = len(doc1)
+            sample1_np = np.zeros(dim_size, dtype=np.float32)
+            for token in doc1:
+                sample1_np += token.vector
+
+            doc2 = nlp(sample2)
+            seq_length2 = len(doc)
+            sample2_np = np.zeros(dim_size, dtype=np.float32)
+            for token in doc2:
+                sample2_np += token.vector
+
+            data.append([
+                torch.from_numpy(sample1_np).to(todevice),
+                torch.zeros(dim_size).to(todevice) + seq_length1,
+                torch.from_numpy(sample2_np).to(todevice),
+                torch.zeros(dim_size).to(todevice) + seq_length2,
+            ])
+
+            random.shuffle(data)
+
+        return data
 
 
 def train(dataloader, model, loss_fn, optimizer, DEVICE):
