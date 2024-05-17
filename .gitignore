@@ -154,6 +154,9 @@ cython_debug/
 
 tmp/
 oov_training_data/
+datasets/
+sentence_embedding_training_data/
+datasets/abcnews-date-text.csv
 
 working.ipynb
 tryit.py
