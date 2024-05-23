@@ -1,3 +1,4 @@
+import random
 import math
 import datetime
 import sqlite3
@@ -121,10 +122,10 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
 
         cosim1 = cos(en1_embedding1, en1_embedding2)
         cosim2 = cos(en2_embedding1, en2_embedding2)
-        pred1 = cosim1.sub(cosim2).square()
+        pred1 = cosim1.sub(cosim2).abs()
         loss1 = loss_fn(pred1, y0)
 
-        if batch % 3 != 0:
+        if random.randint(0, 1) == 0:
             pred2 = cos(en1_embedding1, en1_embedding2)
         else:
             pred2 = cos(en2_embedding1, en2_embedding2)
@@ -182,9 +183,9 @@ NUM_WORKERS = 8
 LEARNING_RATE = 0.001
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 2
-ASYM_DROPOUT1 = 0.29
-ASYM_DROPOUT2 = 0.97
+CHECKPOINT_NUM = 3
+ASYM_DROPOUT1 = 0.21
+ASYM_DROPOUT2 = 0.93
 
 CFG = {
     'embed_size': 300,
@@ -192,16 +193,16 @@ CFG = {
     # 'hidden_size2': 128,  # v1
     'hidden_size1': 16,   # v2
     'hidden_size2': 64,  # v2
-    'dropout1': 0.21,
-    'dropout2': 0.93,
+    'dropout1': 0.17,
+    'dropout2': 0.81,
     'num_layers1': 2,
     # 'num_layers2': 2,     # v1
     'num_layers2': 3,     # v2
     'device': DEVICE,
     'batch_size': BATCH_SIZE,
     'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
-    'token_noise_magnitue': 2.9,
-    'sequence_noise_ratio': 0.29
+    'token_noise_magnitue': 4.9,
+    'sequence_noise_ratio': 0.67
 }
 
 if __name__ == '__main__':
