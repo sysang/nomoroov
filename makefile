@@ -31,5 +31,13 @@ reuters_headlines:
 guardian_headlines:
 	@python3 cook_sentence_embedding_data.py --target=11
 
+gutenberg-project-book-part-0:
+	@python3 cook_sentence_embedding_data.py --target=12
+
+gutenberg-project-book-part-1:
+	@python3 cook_sentence_embedding_data.py --target=13
+
+gutenberg-project-book-part-2:
+	@python3 cook_sentence_embedding_data.py --target=14
 
 

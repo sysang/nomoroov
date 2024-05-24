@@ -16,8 +16,12 @@ if __name__ == '__main__':
     CFG['batch_size'] = 1
     CFG['device'] = 'cpu'
 
-    checkpoint = 'tmp/checkpoints/v2/epoch7_encoder1'
+    checkpoint = 'tmp/checkpoints/v3/epoch10_encoder1'
     # checkpoint = 'tmp/checkpoints/batches/v2/epoch2_batch7400_encoder1'
+    print('checkpoint: ', checkpoint)
+    
+    dataset = 'datasets/quora-duplicate-questions.tsv'
+    print('dataset: ', dataset)
 
     model = SentenceEmbedding(CFG).to('cpu')
     model.load_state_dict(torch.load(checkpoint))
@@ -27,10 +31,12 @@ if __name__ == '__main__':
     with open(saved_file, mode='w') as fwrite:
         fwrite.write('sample1\tsample2\testimated\n')
 
-        with open('datasets/quora-duplicate-questions.tsv',  mode='r', encoding='utf-8') as fd:
+        with open(dataset,  mode='r', encoding='utf-8') as fd:
             reader = csv.reader(fd, delimiter='\t')
             next(reader)
 
+            accumulated = 0
+            counter = 0
             for row in reader:
                 if len(row) != 6:
                     continue
@@ -48,6 +54,10 @@ if __name__ == '__main__':
                 #     continue
 
                 score = model.similarity(question1, question2, nlp)
+                accumulated += score
+                counter += 1
 
                 data = f'{question1}\t{question2}\t{score}\n'
                 fwrite.write(data)
+
+        print(f'Done. Average score: {accumulated / counter}')

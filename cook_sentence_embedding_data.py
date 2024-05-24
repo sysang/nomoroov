@@ -137,10 +137,28 @@ def create_data_pair(raw_data, db, estimate_similarity, nlp, k_sampling, fixed_s
 if __name__ == '__main__':
     is_debug = False
 
+    datasets = {
+            '1': 'wikidata-text-part-0.txt',
+            '2': 'wikidata-text-part-1.txt',
+            '3': 'wikidata-text-part-2.txt',
+            '4': 'wikidata-text-part-3.txt',
+            '5': 'wikidata-text-part-4.txt',
+            '6': 'wikidata-text-part-5.txt',
+            '7': 'abcnews-date-text.txt',
+            '8': 'processed-imdb-movie-rating.txt',
+            '9': 'cnbc_headlines.txt',
+            '10': 'reuters_headlines.txt',
+            '11': 'guardian_headlines.txt',
+            '12': 'gutenberg-project-book-part-0.txt',
+            '13': 'gutenberg-project-book-part-1.txt',
+            '14': 'gutenberg-project-book-part-2.txt',
+            '-1': 'samples.txt',
+    }
+
     parser = argparse.ArgumentParser(prog='cook_sentence_embedding_data',
             description='Gererate training data')
     parser.add_argument('-t', '--target',
-                        choices=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '-1'],
+                        choices=list(datasets.keys()),
                         required=False, default='11')
 
     args = parser.parse_args()
@@ -164,20 +182,6 @@ if __name__ == '__main__':
     k_sampling = 9
     # window_size = 32
 
-    datasets = {
-            '1': 'wikidata-text-part-0.txt',
-            '2': 'wikidata-text-part-1.txt',
-            '3': 'wikidata-text-part-2.txt',
-            '4': 'wikidata-text-part-3.txt',
-            '5': 'wikidata-text-part-4.txt',
-            '6': 'wikidata-text-part-5.txt',
-            '7': 'abcnews-date-text.txt',
-            '8': 'processed-imdb-movie-rating.txt',
-            '9': 'cnbc_headlines.txt',
-            '10': 'reuters_headlines.txt',
-            '11': 'guardian_headlines.txt',
-            '-1': 'samples.txt',
-    }
     if is_debug:
         target = '11'
     else:

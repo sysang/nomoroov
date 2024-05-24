@@ -10,8 +10,8 @@ CFG['dropout2'] = 0.0
 CFG['batch_size'] = 1
 CFG['device'] = 'cpu'
 
-checkpoint = 'tmp/checkpoints/v2/epoch7_encoder1'
-# checkpoint = 'tmp/checkpoints/batches/v2/epoch2_batch7400_encoder1'
+checkpoint = 'tmp/checkpoints/v3/epoch2_encoder1'
+# checkpoint = 'tmp/checkpoints/batches/v3/epoch1_batch2400_encoder2'
 
 
 model = SentenceEmbedding(CFG).to('cpu')
