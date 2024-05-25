@@ -17,7 +17,7 @@ if __name__ == '__main__':
     CFG['batch_size'] = 1
     CFG['device'] = 'cpu'
 
-    checkpoint = 'tmp/checkpoints/v3/epoch14_encoder2'
+    checkpoint = 'tmp/checkpoints/v3/epoch20_encoder1'
     # checkpoint = 'tmp/checkpoints/batches/v2/epoch2_batch7400_encoder1'
     print('checkpoint: ', checkpoint)
 

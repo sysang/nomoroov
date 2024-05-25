@@ -107,8 +107,8 @@ def merge_databases():
 
 
 if __name__ == '__main__':
-    # merge_databases()
+    merge_databases()
 
-    dbname = 'gutenberg-project-book-part-0'
-    test_data(dbname)
+    # dbname = 'gutenberg-project-book-part-0.txt'
+    # test_data(dbname)
 
