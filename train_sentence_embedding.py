@@ -168,9 +168,9 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 
 FIXED_SEQUENCE_LENGTH = 40
 
-BATCH_SIZE = 2500
+BATCH_SIZE = 2048
 EPOCHS = 10
-CURRENT_EPOCH = 17
+CURRENT_EPOCH = 40
 DATASET_SIZE = 20717560
 NUM_WORKERS = 8
 
@@ -215,29 +215,6 @@ if __name__ == '__main__':
 
     word_embedding = nn.Embedding.from_pretrained(get_word_vector_matrix(nlp, DEVICE))
 
-    # data_files = [
-    #     'sentence_embedding_training_data/samples.csv',
-    #     'sentence_embedding_training_data/wikidata-text-part-1.csv',
-    #     'sentence_embedding_training_data/wikidata-text-part-2.csv',
-    #     'sentence_embedding_training_data/wikidata-text-part-3.csv',
-    #     'sentence_embedding_training_data/wikidata-text-part-4.csv',
-    #     'sentence_embedding_training_data/wikidata-text-part-5.csv',
-    #     'sentence_embedding_training_data/abcnews-date-text.csv',
-    #     'sentence_embedding_training_data/processed-imdb-movie-rating.csv',
-    #     'sentence_embedding_training_data/reuters_headlines.csv',
-    #     'sentence_embedding_training_data/cnbc_headlines.csv',
-    #     'sentence_embedding_training_data/guardian_headlines.db',
-    # ]
-    # ds = load_dataset(
-    #     'csv',
-    #     data_files=data_files,
-    #     delimiter='\t',
-    #     sep='\t',
-    #     split='train',
-    #     on_bad_lines='skip',
-    #     encoding='utf=8'
-    # )
-    
     # conn = sqlite3.connect('sentence_embedding_training_data/guardian_headlines.txt.db')
     conn = sqlite3.connect('sentence_embedding_training_data/sqlite_file.db')
     ds = Dataset.from_sql( "SELECT json_data FROM record", con=conn)
@@ -263,14 +240,8 @@ if __name__ == '__main__':
         encoder1.load_state_dict(torch.load(checkpoint1))
         encoder2.load_state_dict(torch.load(checkpoint2))
 
-    ds = ds.to_iterable_dataset(num_shards=NUM_WORKERS).map(
-        dataset_map, batched=True).shuffle(
-            seed=42, buffer_size=math.ceil(BATCH_SIZE * 3.1))
+    ds = ds.to_iterable_dataset(num_shards=NUM_WORKERS).map(dataset_map, batched=True)    
     ds = ds.with_format('torch')
-    dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                            persistent_workers=True, pin_memory=True,
-                            pin_memory_device=DEVICE)
-
     # ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
     # ds = ds.with_format('torch', device=DEVICE)
     # dataloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
@@ -281,6 +252,12 @@ if __name__ == '__main__':
 
     for epoch in range(CURRENT_EPOCH + 1, EPOCHS + CURRENT_EPOCH + 1):
         print(f'\n\nEpoch {epoch}\n----------------------------------')
+
+
+        ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 4.3))
+        dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
+                                persistent_workers=True, pin_memory=True,
+                                pin_memory_device=DEVICE)
 
         train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn,
               optimizer1, optimizer2, CFG, DATASET_SIZE, epoch, CHECKPOINT_NUM)

@@ -9,7 +9,7 @@ from train_sentence_embedding import CFG
 
 
 if __name__ == '__main__':
-    k_sample = 1000
+    k_sample = 4000
     nlp = load_spacy()
 
     CFG['dropout1'] = 0.0
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     CFG['batch_size'] = 1
     CFG['device'] = 'cpu'
 
-    checkpoint = 'tmp/checkpoints/v3/epoch20_encoder1'
+    checkpoint = 'tmp/checkpoints/v3/epoch40_encoder1'
     # checkpoint = 'tmp/checkpoints/batches/v2/epoch2_batch7400_encoder1'
     print('checkpoint: ', checkpoint)
 
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         samples_2 = list(fd.readlines())
         samples_size_2 = len(samples_2)
 
-    print('samples size: ', samples_size_1, samples_size_2)
+    print(f'{dataset1}: {samples_size_1}, {dataset2}: {samples_size_2}')
 
     saved_file = f'tmp/evaluation/benchmark-{dataset1}-{dataset2}.csv'
     with open(saved_file, mode='w') as fwrite:
@@ -56,4 +56,4 @@ if __name__ == '__main__':
             data = f'{sample1}\t{sample2}\t{score}\n'
             fwrite.write(data)
 
-    print(f'Done. Average score: {accumulated / k_sample}')
+    print(f'[RESULT] k_sample: {k_sample}, average score: {(accumulated / k_sample):0.5f}')
