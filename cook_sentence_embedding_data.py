@@ -1,13 +1,14 @@
 import os
-import csv
 import random
 import argparse
 
-import spacy
 import torch
-from torch import nn
-from peewee import SqliteDatabase, Model, TextField, FloatField
 import msgspec
+
+from spacy.strings import hash_string
+from torch import nn
+from peewee import SqliteDatabase
+
 
 from sentence_embedding_model import SentenceEmbedding
 from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH
@@ -28,7 +29,7 @@ def iterate_data(file):
 
 
 def random_similarity_fn(r1=-0.125, r2=0.125, propotional_threshold=0.95):
-    def random_similarity(text1:str, text2: str):
+    def random_similarity(text1: str, text2: str):
         if text1 == text2:
             return (propotional_threshold, 1)
         return (r1, r2)
@@ -44,17 +45,17 @@ def estimate_similarity_fn(model, nlp):
     return estimate_similarity
 
 
-def vectorise_sequence(sample, nlp, vector_zero_idx, fixed_sequence_length):
+def vectorise_sequence(doc, nlp, vector_zero_idx, fixed_sequence_length):
     sequence = []
-    for token in nlp(sample):
+    for token in doc:
         if not token.text.strip():
             continue
 
-        idx = nlp.vocab.vectors.find(key=token.lex.orth) 
+        idx = nlp.vocab.vectors.find(key=token.lex.orth)
 
         if idx == -1:
-            print(f'[WARNING] skipped invalid data: {sample_}, orth: \
-{[(token.text, token.lex.orth) for token in nlp(sample_)]}')
+            print(f'[WARNING] skipped invalid data: {str(sample)}, orth: \
+{[(token.text, token.lex.orth) for token in nlp(sample)]}')
             return None
         else:
             sequence.append(idx)
@@ -70,7 +71,8 @@ def vectorise_sequence(sample, nlp, vector_zero_idx, fixed_sequence_length):
     return sequence
 
 
-def create_data_pair(raw_data, db, estimate_similarity, nlp, k_sampling, fixed_sequence_length):
+def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
+                     fixed_sequence_length, duplication_indexes=None):
     vector_zero_key = nlp.vocab.strings["vector_zero"]
     vector_zero_idx = nlp.vocab.vectors.find(key=vector_zero_key)
 
@@ -80,55 +82,91 @@ def create_data_pair(raw_data, db, estimate_similarity, nlp, k_sampling, fixed_s
     batch = []
 
     for i in range(quantity):
-        text1 = raw_data[i]
-        text2 = raw_data[i]
-        r1, r2 = estimate_similarity(text1=text1, text2=text2)
+        text11 = raw_data[i]
+        doc11 = nlp(text11)
+        text12 = text11
+        doc12 = nlp(text12)
+        sample11 = vectorise_sequence(
+            doc11, nlp, vector_zero_idx, fixed_sequence_length)
+        sample12 = sample11
 
-        sample1=vectorise_sequence(text1, nlp, vector_zero_idx, fixed_sequence_length)
-        sample2=vectorise_sequence(text2, nlp, vector_zero_idx, fixed_sequence_length)
+        if sample11 is None:
+            break
 
-        if sample1 is not None and sample2 is not None:
-            pair = SentencePair(
-                sample1=sample1,
-                sample2=sample2,
-                sim_lower_r1=r1,
-                sim_upper_r2=r2
-            )
-            batch.append({'json_data': msgspec.json.encode(pair)})
-            counter += 1
+        r11, r12 = estimate_similarity(doc1=doc11, doc2=doc12)
+        pair = SentencePair(
+            sample1=sample11,
+            sample2=sample12,
+            sim_lower_r1=r11,
+            sim_upper_r2=r12
+        )
+        batch.append({'json_data': msgspec.json.encode(pair)})
+        counter += 1
+
+        if duplication_indexes is not None and i + 1 <= quantity - 1:
+            hashed11 = hash_string(text11)
+            j = i + 1
+            text22 = raw_data[j]
+            doc22 = nlp(text22)
+            hashed22 = hash_string(text22)
+            r21 = 'n/a'
+            r22 = 'n/a'
+
+            if duplication_indexes.get((hashed11, hashed22), False):
+                caches.add((i, j))
+                caches.add((j, i))
+
+                sample22 = vectorise_sequence(
+                    doc22, nlp, vector_zero_idx, fixed_sequence_length)
+
+                r21, r22 = estimate_similarity(doc1=doc11, doc2=doc22)
+                if sample22 is not None:
+                    pair = SentencePair(
+                        sample1=sample11,
+                        sample2=sample22,
+                        sim_lower_r1=r21,
+                        sim_upper_r2=r22
+                    )
+                    batch.append({'json_data': msgspec.json.encode(pair)})
+                    # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r11}\tr2: {r22}')
+                    counter += 1
 
         for _ in range(k_sampling):
             while True:
                 j = random.choice(range(quantity))
                 if i !=j and (i, j) not in caches:
                     break
-                
+
             caches.add((i, j))
             caches.add((j, i))
-            text1 = raw_data[i]
-            text2 = raw_data[j]
-            r1, r2 = estimate_similarity(text1=text1, text2=text2)
+            text32 = raw_data[j]
+            doc32 = nlp(text32)
 
-            sample1=vectorise_sequence(text1, nlp, vector_zero_idx, fixed_sequence_length)
-            sample2=vectorise_sequence(text2, nlp, vector_zero_idx, fixed_sequence_length)
+            sample32 = vectorise_sequence(
+                doc32, nlp, vector_zero_idx, fixed_sequence_length)
 
-            if sample1 is not None and sample2 is not None:
+            if sample32 is not None:
+                r31, r32 = estimate_similarity(doc1=doc11, doc2=doc32)
                 pair = SentencePair(
-                    sample1=sample1,
-                    sample2=sample2,
-                    sim_lower_r1=r1,
-                    sim_upper_r2=r2
+                    sample1=sample11,
+                    sample2=sample32,
+                    sim_lower_r1=r31,
+                    sim_upper_r2=r32
                 )
                 batch.append({'json_data': msgspec.json.encode(pair)})
                 counter += 1
 
-            if counter % 5000 == 0:
-                print(f'[INFO] Added pair: {text1}\t{text2}, counter: {counter}')
+            if counter % 1000 == 0:
+                print('-----------------------------------------------------------')
+                print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
+                print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
+                print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
+                print('-----------------------------------------------------------')
                 Record.insert_many(batch).execute()
                 batch = []
 
     if len(batch) > 0:
-        print(f'[INFO] Added pair: {text1}\t{text2}, counter: {counter}')
+        print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r11}\tr2: {r22}')
         Record.insert_many(batch).execute()
 
     return counter
@@ -156,7 +194,7 @@ if __name__ == '__main__':
     }
 
     parser = argparse.ArgumentParser(prog='cook_sentence_embedding_data',
-            description='Gererate training data')
+                                     description='Gererate training data')
     parser.add_argument('-t', '--target',
                         choices=list(datasets.keys()),
                         required=False, default='11')
@@ -243,7 +281,8 @@ if __name__ == '__main__':
             counter += 1
 
         if counter >= window_size or (row is None and len(batch) > 0):
-            result = create_data_pair(batch, db, random_similarity, nlp, k_sampling, FIXED_SEQUENCE_LENGTH)
+            result = create_data_pair(batch, Record, random_similarity, nlp,
+                                      k_sampling, FIXED_SEQUENCE_LENGTH)
             total_quantity += result
             batch = []
             counter = 0

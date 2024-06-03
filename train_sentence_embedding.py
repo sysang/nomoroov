@@ -36,7 +36,7 @@ def dataset_map(samples):
     }
 
 
-def generate_noise(sample, token_noise_magnitue, threshold, device):
+def apply_noise(sample, token_noise_magnitue, threshold, device):
     fixed_sequence_length, batch_size, embed_size = sample.shape
 
     sample_length_filter = sample != torch.zeros(
@@ -101,7 +101,7 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
 
         batch_size = sample1.shape[0]
 
-        # if batch_size is not equal to BATCH_SIZE, generate_noise would crash
+        # if batch_size is not equal to BATCH_SIZE, apply_noise would crash
         if batch_size != BATCH_SIZE:
             print(f'[INFO] skip batch that is not full, \
 batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
@@ -110,15 +110,15 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         transposed_s1 = sample1.transpose(0, 1)
         transposed_s2 = sample2.transpose(0, 1)
 
-        noised_transposed_s1 = generate_noise(
-            transposed_s1, token_noise_magnitue, threshold, device)
-        noised_transposed_s2 = generate_noise(
-            transposed_s2, token_noise_magnitue, threshold, device)
+        en1_embedding1 = encoder1(
+            apply_noise(transposed_s1, token_noise_magnitue, threshold, device))
+        en1_embedding2 = encoder1(
+            apply_noise(transposed_s2, token_noise_magnitue, threshold, device))
 
-        en1_embedding1 = encoder1(noised_transposed_s1)
-        en1_embedding2 = encoder1(noised_transposed_s2)
-        en2_embedding1 = encoder2(noised_transposed_s1)
-        en2_embedding2 = encoder2(noised_transposed_s2)
+        en2_embedding1 = encoder2(
+            apply_noise(transposed_s1, token_noise_magnitue, threshold, device))
+        en2_embedding2 = encoder2(
+            apply_noise(transposed_s2, token_noise_magnitue, threshold, device))
 
         cosim1 = cos(en1_embedding1, en1_embedding2)
         cosim2 = cos(en2_embedding1, en2_embedding2)
@@ -169,8 +169,8 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 FIXED_SEQUENCE_LENGTH = 40
 
 BATCH_SIZE = 2048
-EPOCHS = 10
-CURRENT_EPOCH = 74
+EPOCHS = 1
+CURRENT_EPOCH = 1
 DATASET_SIZE = 20717560
 NUM_WORKERS = 8
 
@@ -183,21 +183,18 @@ NUM_WORKERS = 8
 LEARNING_RATE = 0.001
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 3
-ASYM_DROPOUT1 = 0.21
-ASYM_DROPOUT2 = 0.93
+CHECKPOINT_NUM = 5
+ASYM_DROPOUT1 = 0.17
+ASYM_DROPOUT2 = 0.81
 
 CFG = {
     'embed_size': 300,
-    # 'hidden_size1': 32,   # v1
-    # 'hidden_size2': 128,  # v1
-    'hidden_size1': 16,   # v2
-    'hidden_size2': 64,  # v2
-    'dropout1': 0.17,
-    'dropout2': 0.81,
-    'num_layers1': 2,
-    # 'num_layers2': 2,     # v1
-    'num_layers2': 3,     # v2
+    'hidden_size1': 32,
+    'hidden_size2': 128,
+    'dropout1': 0.07,
+    'dropout2': 0.67,
+    'num_layers1': 3,
+    'num_layers2': 3,
     'device': DEVICE,
     'batch_size': BATCH_SIZE,
     'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
