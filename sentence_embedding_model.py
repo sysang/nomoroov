@@ -36,9 +36,9 @@ class SentenceEmbedding(nn.Module):
         self.compress1 = nn.GRU(input_size=self.embed_size, hidden_size=self.hidden_size1,
                                 num_layers=self.num_layers1)
         self.decode1 = nn.GRU(input_size=self.hidden_size1, hidden_size=self.hidden_size1,
-                              num_layers=self.num_layers_i, dropout=self.dropout1)
+                              num_layers=self.num_layers1, dropout=self.dropout1)
         self.decode2 = nn.GRU(input_size=self.hidden_size1, hidden_size=self.hidden_size2,
-                              num_layers=self.num_layers2, dropout=self.dropout2)
+                              num_layers=1, dropout=0.0)
 
         if finetuning:
             for p in self.compress1.parameters():
@@ -50,19 +50,20 @@ class SentenceEmbedding(nn.Module):
         self.cos = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     def initHiddenCell(self, batch_size, hidden_size, num_layers=1):
-        return Variable(torch.zeros(num_layers, batch_size, hidden_size)).to(self.device)
+        return Variable(torch.ones(num_layers, batch_size, hidden_size)).to(self.device)
 
     def forward(self, input):
         hidden1 = self.initHiddenCell(self.batch_size, self.hidden_size1, self.num_layers1)
         embedded1, hidden1 = self.compress1(input, hidden1)
 
-        hidden2 = self.initHiddenCell(self.batch_size, self.hidden_size1, self.num_layers_i)
-        embedded2, _ = self.decode1(embedded1, hidden2)
+        # hidden2 = self.initHiddenCell(self.batch_size, self.hidden_size1, self.num_layers_i)
+        embedded2, _ = self.decode1(embedded1, hidden1)
 
         hidden3 = self.initHiddenCell(self.batch_size, self.hidden_size2, self.num_layers2)
         _, hidden3 = self.decode2(embedded2, hidden3)
 
-        return torch.cat((hidden3[-1], hidden3[-2], hidden3[-3]), dim=1)
+        # return torch.cat((hidden3[-1], hidden3[-2], hidden3[-3]), dim=1)
+        return hidden3[-1]
 
     def tensorise(self, doc):
         tensor = torch.zeros(len(doc), len(doc[0].vector), dtype=torch.float32)

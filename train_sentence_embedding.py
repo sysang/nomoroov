@@ -83,6 +83,9 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
 
     for batch, data in enumerate(dataloader):
 
+        # if batch <= 5399:
+        #     continue
+
         current = (batch + 1) * BATCH_SIZE
         remains = dataset_size - current
 
@@ -151,7 +154,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         optimizer2.step()
         optimizer2.zero_grad()
         
-        if (batch + 1) % 200 == 0 or remains < BATCH_SIZE:
+        if (batch + 1) % 100 == 0 or remains < BATCH_SIZE:
             _loss1, _loss2, total_loss  = (
                     loss1.item(), loss2.item(), loss.item())
 
@@ -170,9 +173,9 @@ FIXED_SEQUENCE_LENGTH = 40
 
 BATCH_SIZE = 2048
 EPOCHS = 1
-CURRENT_EPOCH = 1
+CURRENT_EPOCH = 5
 DATASET_SIZE = 20717560
-NUM_WORKERS = 8
+NUM_WORKERS = 6
 
 # BATCH_SIZE = 3
 # EPOCHS = 1
@@ -180,21 +183,21 @@ NUM_WORKERS = 8
 # DATASET_SIZE = 11780
 # NUM_WORKERS = 1
 
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0002
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 5
-ASYM_DROPOUT1 = 0.17
-ASYM_DROPOUT2 = 0.81
+CHECKPOINT_NUM = 6
+ASYM_DROPOUT1 = 0.23
+ASYM_DROPOUT2 = 0.0
 
 CFG = {
     'embed_size': 300,
-    'hidden_size1': 32,
-    'hidden_size2': 128,
-    'dropout1': 0.07,
-    'dropout2': 0.67,
+    'hidden_size1': 10,
+    'hidden_size2': 300,
+    'dropout1': 0.17,
+    'dropout2': 0.0,
     'num_layers1': 3,
-    'num_layers2': 3,
+    'num_layers2': 1,
     'device': DEVICE,
     'batch_size': BATCH_SIZE,
     'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
@@ -228,6 +231,8 @@ if __name__ == '__main__':
     print(f"[INFO] encoder's hidden_size2: {encoder1.hidden_size2}")
     print(f"[INFO] encoder's num_layers1: {encoder1.num_layers1}")
     print(f"[INFO] encoder's num_layers2: {encoder1.num_layers2}")
+    print(f"[INFO] batch size: {BATCH_SIZE}")
+    print(f"[INFO] learning rate: {LEARNING_RATE}")
 
     if CURRENT_EPOCH > 0:
         checkpoint1 = f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{CURRENT_EPOCH}_encoder1'
@@ -253,8 +258,8 @@ if __name__ == '__main__':
 
         ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 4.3))
         dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                                persistent_workers=True, pin_memory=True,
-                                pin_memory_device=DEVICE)
+                                prefetch_factor=NUM_WORKERS*2, persistent_workers=True,
+                                pin_memory=True, pin_memory_device=DEVICE)
 
         train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn,
               optimizer1, optimizer2, CFG, DATASET_SIZE, epoch, CHECKPOINT_NUM)

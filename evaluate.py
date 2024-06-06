@@ -23,9 +23,10 @@ if __name__ == '__main__':
     CFG['batch_size'] = 1
     CFG['device'] = 'cpu'
 
-    # checkpoint = 'tmp/checkpoints/v3/epoch77_encoder1'
-    checkpoint = 'tmp/checkpoints/v5/epoch1_encoder1'
+    checkpoint = 'tmp/checkpoints/v3/epoch69_encoder1'
+    # checkpoint = 'tmp/checkpoints/v6/epoch1_encoder1'
     # checkpoint = 'tmp/finetuned/iterations/v3_epoch69_iter0'
+    # checkpoint = 'tmp/checkpoints/batches/v6/epoch6_batch8000_encoder1'
     
     dataset = 'processed-quora-duplicated-questions-test.csv'
     print('checkpoint: ', checkpoint)
