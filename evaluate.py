@@ -7,6 +7,7 @@ import torch
 
 from load_spacy import load_spacy
 from sentence_embedding_model import SentenceEmbedding
+from sentence_embedding_model_v3 import SentenceEmbeddingV3
 from train_sentence_embedding import CFG
 
 
@@ -18,20 +19,21 @@ if __name__ == '__main__':
     k_sample = 4000
     nlp = load_spacy()
 
-    CFG['dropout1'] = 0.0
-    CFG['dropout2'] = 0.0
-    CFG['batch_size'] = 1
-    CFG['device'] = 'cpu'
+    # CFG['dropout1'] = 0.0
+    # CFG['dropout2'] = 0.0
+    # CFG['batch_size'] = 1
+    # CFG['device'] = 'cpu'
 
-    checkpoint = 'tmp/checkpoints/v3/epoch69_encoder1'
+    # checkpoint = 'tmp/checkpoints/v3/epoch69_encoder1'
     # checkpoint = 'tmp/checkpoints/v6/epoch1_encoder1'
-    # checkpoint = 'tmp/finetuned/iterations/v3_epoch69_iter0'
+    checkpoint = 'tmp/finetuned/iterations/v3_epoch69_iter0'
     # checkpoint = 'tmp/checkpoints/batches/v6/epoch6_batch8000_encoder1'
     
     dataset = 'processed-quora-duplicated-questions-test.csv'
     print('checkpoint: ', checkpoint)
 
-    model = SentenceEmbedding(CFG).to('cpu')
+    # model = SentenceEmbedding(CFG).to('cpu')
+    model = SentenceEmbeddingV3().to('cpu')
     model.load_state_dict(torch.load(checkpoint))
     model.eval()
 
