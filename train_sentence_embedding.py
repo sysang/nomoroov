@@ -12,6 +12,7 @@ import spacy
 import msgspec
 
 from sentence_embedding_model import SentenceEmbedding
+from sentence_embedding_model_v7 import SentenceEmbeddingV7
 from data_schema import SentencePair
 
 
@@ -73,9 +74,9 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
     sequence_noise_ratio = torch.tensor(
         config['sequence_noise_ratio'], dtype=torch.float32).to(device)
 
-    threshold = torch.ones(
-        (fixed_sequence_length, batch_size, 1),
-        dtype=torch.float32).to(device).mul(sequence_noise_ratio)
+    # threshold = torch.ones(
+    #     (fixed_sequence_length, batch_size, 1),
+    #     dtype=torch.float32).to(device).mul(sequence_noise_ratio)
 
     y0 = torch.zeros(batch_size, dtype=torch.float32).to(device)
 
@@ -96,8 +97,7 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
 
         # print('sample1[0]: ', sample1[0])
         # print('sample2[0]: ', sample2[0])
-        # print('r1[0]: ', r1[0])
-        # print('r2[0]: ', r2[0])
+        # print('r1, r2:', r1, r2)
 
         sample1 = word_embedding(sample1)
         sample2 = word_embedding(sample2)
@@ -113,15 +113,11 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         transposed_s1 = sample1.transpose(0, 1)
         transposed_s2 = sample2.transpose(0, 1)
 
-        en1_embedding1 = encoder1(
-            apply_noise(transposed_s1, token_noise_magnitue, threshold, device))
-        en1_embedding2 = encoder1(
-            apply_noise(transposed_s2, token_noise_magnitue, threshold, device))
+        en1_embedding1 = encoder1(transposed_s1)
+        en1_embedding2 = encoder1(transposed_s2)
 
-        en2_embedding1 = encoder2(
-            apply_noise(transposed_s1, token_noise_magnitue, threshold, device))
-        en2_embedding2 = encoder2(
-            apply_noise(transposed_s2, token_noise_magnitue, threshold, device))
+        en2_embedding1 = encoder2(transposed_s1)
+        en2_embedding2 = encoder2(transposed_s2)
 
         cosim1 = cos(en1_embedding1, en1_embedding2)
         cosim2 = cos(en2_embedding1, en2_embedding2)
@@ -154,7 +150,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         optimizer2.step()
         optimizer2.zero_grad()
         
-        if (batch + 1) % 100 == 0 or remains < BATCH_SIZE:
+        if (batch + 1) % 250 == 0 or remains < BATCH_SIZE:
             _loss1, _loss2, total_loss  = (
                     loss1.item(), loss2.item(), loss.item())
 
@@ -172,37 +168,38 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 FIXED_SEQUENCE_LENGTH = 40
 
 BATCH_SIZE = 2048
-EPOCHS = 1
-CURRENT_EPOCH = 5
-DATASET_SIZE = 20717560
-NUM_WORKERS = 6
+EPOCHS = 3
+CURRENT_EPOCH = 3
+DATASET_SIZE = 42881181
+NUM_WORKERS = 7
 
-# BATCH_SIZE = 3
+# BATCH_SIZE = 10
 # EPOCHS = 1
 # CURRENT_EPOCH = 0
-# DATASET_SIZE = 11780
+# DATASET_SIZE = 24738
 # NUM_WORKERS = 1
 
-LEARNING_RATE = 0.0002
+LEARNING_RATE = 0.001
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 6
-ASYM_DROPOUT1 = 0.23
-ASYM_DROPOUT2 = 0.0
+CHECKPOINT_NUM = 7
+# ASYM_DROPOUT1 = 0.0
+# ASYM_DROPOUT2 = 0.0
 
 CFG = {
     'embed_size': 300,
-    'hidden_size1': 10,
-    'hidden_size2': 300,
-    'dropout1': 0.17,
-    'dropout2': 0.0,
-    'num_layers1': 3,
-    'num_layers2': 1,
+    'compress_size1': 60,
+    'hidden_size1': 16,
+    'hidden_size2': 64,
+    'dropout': 0.89,
+    'asym_dropout': 0.61,
+    'num_layers1': 4,
+    'num_layers2': 5,
     'device': DEVICE,
     'batch_size': BATCH_SIZE,
     'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
     'token_noise_magnitue': 4.9,
-    'sequence_noise_ratio': 0.67
+    'sequence_noise_ratio': 0.41
 }
 
 if __name__ == '__main__':
@@ -219,14 +216,16 @@ if __name__ == '__main__':
     conn = sqlite3.connect('sentence_embedding_training_data/sqlite_file.db')
     ds = Dataset.from_sql( "SELECT json_data FROM record", con=conn)
 
-    encoder1 = SentenceEmbedding(CFG).to(DEVICE)
-    encoder2 = SentenceEmbedding(CFG, dropout1=ASYM_DROPOUT1, dropout2=ASYM_DROPOUT2).to(DEVICE)
+    encoder1 = SentenceEmbeddingV7(config=CFG).to(DEVICE)
+    encoder2 = SentenceEmbeddingV7(config=CFG, dropout=CFG['asym_dropout']).to(DEVICE)
 
     print(f"[INFO] training version: {CHECKPOINT_NUM}")
-    print(f"[INFO] encoder1's dropout1: {encoder1.dropout1}")
-    print(f"[INFO] encoder1's dropout2: {encoder1.dropout2}")
-    print(f"[INFO] encoder2's dropout1: {encoder2.dropout1}")
-    print(f"[INFO] encoder2's dropout2: {encoder2.dropout2}")
+    print(f"[INFO] encoder1's dropout: {encoder1.dropout}")
+    print(f"[INFO] encoder2's dropout: {encoder2.dropout}")
+    # print(f"[INFO] encoder1's dropout1: {encoder1.dropout1}")
+    # print(f"[INFO] encoder1's dropout2: {encoder1.dropout2}")
+    # print(f"[INFO] encoder2's dropout1: {encoder2.dropout1}")
+    # print(f"[INFO] encoder2's dropout2: {encoder2.dropout2}")
     print(f"[INFO] encoder's hidden_size1: {encoder1.hidden_size1}")
     print(f"[INFO] encoder's hidden_size2: {encoder1.hidden_size2}")
     print(f"[INFO] encoder's num_layers1: {encoder1.num_layers1}")

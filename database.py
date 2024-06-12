@@ -41,20 +41,17 @@ def get_model_class(db):
 
 def merge_databases():
     datasets = [
-            # 'wikidata-text-part-0',
-            # 'wikidata-text-part-1',
-            # 'wikidata-text-part-2',
-            # 'wikidata-text-part-3',
-            # 'wikidata-text-part-4',
-            # 'wikidata-text-part-5',
-            # 'abcnews-date-text',
-            # 'processed-imdb-movie-rating',
-            # 'cnbc_headlines',
-            # 'reuters_headlines',
-            # 'guardian_headlines',
-            'gutenberg-project-book-part-0',
-            'gutenberg-project-book-part-1',
-            'gutenberg-project-book-part-2',
+            'wikidata-text-part-0',
+            'wikidata-text-part-1',
+            'wikidata-text-part-2',
+            'wikidata-text-part-3',
+            'wikidata-text-part-4',
+            'wikidata-text-part-5',
+            'abcnews-date-text-part-0',
+            'abcnews-date-text-part-1',
+            'processed-imdb-movie-rating-part-0',
+            'processed-imdb-movie-rating-part-1',
+            'reuters_headlines',
     ]
 
     dbname = 'sqlite_file'
@@ -72,7 +69,7 @@ def merge_databases():
             database = merged_db
 
     merged_db.connect()
-    # merged_db.create_tables([Record])
+    merged_db.create_tables([Record])
 
     total_quantity = 0
 

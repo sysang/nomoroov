@@ -29,20 +29,16 @@ def iterate_data(file):
 
 
 def random_similarity_fn(r1=-0.125, r2=0.125, propotional_threshold=0.95):
-    def random_similarity(text1: str, text2: str):
+    def random_similarity(doc1, doc2):
+        text1 = str(doc1)
+        text2 = str(doc2)
+
         if text1 == text2:
             return (propotional_threshold, 1)
+
         return (r1, r2)
 
     return random_similarity
-
-
-def estimate_similarity_fn(model, nlp):
-    def estimate_similarity(text1, text2):
-        score = model.similarity(text1, text2, nlp)
-        return score, score
-
-    return estimate_similarity
 
 
 def vectorise_sequence(doc, nlp, vector_zero_idx, fixed_sequence_length):
@@ -159,22 +155,22 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
             if counter % 1000 == 0:
                 print('-----------------------------------------------------------')
                 print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
-                print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
+                # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
                 print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
                 print('-----------------------------------------------------------')
                 Record.insert_many(batch).execute()
                 batch = []
 
     if len(batch) > 0:
-        print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r11}\tr2: {r22}')
+        print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
+        # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
+        print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
         Record.insert_many(batch).execute()
 
     return counter
 
 
 if __name__ == '__main__':
-    is_debug = False
-
     datasets = {
             '1': 'wikidata-text-part-0.txt',
             '2': 'wikidata-text-part-1.txt',
@@ -182,14 +178,16 @@ if __name__ == '__main__':
             '4': 'wikidata-text-part-3.txt',
             '5': 'wikidata-text-part-4.txt',
             '6': 'wikidata-text-part-5.txt',
-            '7': 'abcnews-date-text.txt',
-            '8': 'processed-imdb-movie-rating.txt',
-            '9': 'cnbc_headlines.txt',
-            '10': 'reuters_headlines.txt',
-            '11': 'guardian_headlines.txt',
-            '12': 'gutenberg-project-book-part-0.txt',
-            '13': 'gutenberg-project-book-part-1.txt',
-            '14': 'gutenberg-project-book-part-2.txt',
+            '7': 'abcnews-date-text-part-0.txt',
+            '8': 'abcnews-date-text-part-1.txt',
+            '9': 'processed-imdb-movie-rating-part-0.txt',
+            '10': 'processed-imdb-movie-rating-part-1.txt',
+            '11': 'cnbc_headlines.txt',  # skipped
+            '12': 'reuters_headlines.txt',
+            '13': 'guardian_headlines.txt',  # skipped
+            '14': 'gutenberg-project-book-part-0.txt',
+            '15': 'gutenberg-project-book-part-1.txt',
+            '16': 'gutenberg-project-book-part-2.txt',
             '-1': 'samples.txt',
     }
 
@@ -200,32 +198,17 @@ if __name__ == '__main__':
                         required=False, default='11')
 
     args = parser.parse_args()
+    target = args.target
+    name = datasets[target]
 
     nlp = load_spacy()
 
-    if is_debug:
-        # checkpoint = 'tmp/checkpoints/v1/epoch1_encoder1'
-        checkpoint = 'tmp/checkpoints/batches/epoch1_batch400_encoder2'
-        CFG['device'] = 'cpu'
-        CFG['batch_size'] = 1
+    WINDOW_SIZE = 2000
+    K_SAMPLING = 20
+    R1 = -0.425
+    R2 = 0.425
 
-        encoder = SentenceEmbedding(CFG).to('cpu')
-        encoder.load_state_dict(torch.load(checkpoint))
-        encoder.eval()
-        random_similarity = estimate_similarity_fn(encoder, nlp)
-    else:
-        random_similarity = random_similarity_fn()
-
-    window_size = 2000
-    k_sampling = 9
-    # window_size = 32
-
-    if is_debug:
-        target = '11'
-    else:
-        target = args.target
-
-    name = datasets[target]
+    random_similarity = random_similarity_fn(r1=R1, r2=R2)
 
     print(f'[INFO] Process dataset: {name}')
 
@@ -269,10 +252,7 @@ if __name__ == '__main__':
                 if token.is_oov:
                     is_skipped = True
                     break
-                # if nlp.vocab.vectors.find(key=token.lex.orth) == -1:
-                #     print(f'[SKIPPED] invalid vocab index, text: {row}, orth: {token.lex.orth}')
-                #     is_skipped = True
-                #     break
+
             if is_skipped:
                 continue
 
@@ -280,9 +260,9 @@ if __name__ == '__main__':
             batch.append(row)
             counter += 1
 
-        if counter >= window_size or (row is None and len(batch) > 0):
+        if counter >= WINDOW_SIZE or (row is None and len(batch) > 0):
             result = create_data_pair(batch, Record, random_similarity, nlp,
-                                      k_sampling, FIXED_SEQUENCE_LENGTH)
+                                      K_SAMPLING, FIXED_SEQUENCE_LENGTH)
             total_quantity += result
             batch = []
             counter = 0

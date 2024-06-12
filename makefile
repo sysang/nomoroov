@@ -16,28 +16,34 @@ wikidata-text-part-4:
 wikidata-text-part-5:
 	@python3 cook_sentence_embedding_data.py --target=6
 
-abcnews-date-text:
+abcnews-date-text-part-0:
 	@python3 cook_sentence_embedding_data.py --target=7
 
-processed-imdb-movie-rating:
+abcnews-date-text-part-1:
 	@python3 cook_sentence_embedding_data.py --target=8
 
-cnbc_headlines:
+processed-imdb-movie-rating-part-0:
 	@python3 cook_sentence_embedding_data.py --target=9
 
-reuters_headlines:
+processed-imdb-movie-rating-part-1:
 	@python3 cook_sentence_embedding_data.py --target=10
 
-guardian_headlines:
+cnbc_headlines:
 	@python3 cook_sentence_embedding_data.py --target=11
 
-gutenberg-project-book-part-0:
+reuters_headlines:
 	@python3 cook_sentence_embedding_data.py --target=12
 
-gutenberg-project-book-part-1:
+guardian_headlines:
 	@python3 cook_sentence_embedding_data.py --target=13
 
-gutenberg-project-book-part-2:
+gutenberg-project-book-part-0:
 	@python3 cook_sentence_embedding_data.py --target=14
+
+gutenberg-project-book-part-1:
+	@python3 cook_sentence_embedding_data.py --target=15
+
+gutenberg-project-book-part-2:
+	@python3 cook_sentence_embedding_data.py --target=16
 
 
