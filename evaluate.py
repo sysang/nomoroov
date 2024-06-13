@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # CFG['device'] = 'cpu'
 
     # checkpoint = 'tmp/checkpoints/v3/epoch69_encoder1'
-    checkpoint = 'tmp/checkpoints/v7/epoch6_encoder1'
+    checkpoint = 'tmp/checkpoints/v7/epoch10_encoder1'
     # checkpoint = 'tmp/finetuned/iterations/v3_epoch69_iter0'
     # checkpoint = 'tmp/checkpoints/batches/v7/epoch1_batch17250_encoder1'
     
