@@ -28,8 +28,8 @@ def iterate_data(file):
             yield sent1, sent2
 
 
-def estimate_similarity_fn(model, nlp, duplication_indexes, r1=-0.125,
-                           r2=0.125, propotional_threshold=0.89,
+def estimate_similarity_fn(model, nlp, duplication_indexes, r1,
+                           r2, propotional_threshold=0.89,
                            identical_threshold=0.95):
     def estimate_similarity(doc1, doc2):
         hashed1 = hash_string(str(doc1))
@@ -46,7 +46,7 @@ def estimate_similarity_fn(model, nlp, duplication_indexes, r1=-0.125,
         regulation_r1 = r1 * 1.5
         regulation_r2 = r2 * 1.5
         if regulation_r1 < score and score < regulation_r2:
-            offset = regulation_r2 / 10
+            offset = regulation_r2 / 8
             return max(score - offset, -1), min(score + offset, 1)
 
         return (r1, r2)
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
         if counter >= window_size or (sent1 is None and len(batch) > 0):
             random_similarity = estimate_similarity_fn(
-                encoder, nlp, duplication_indexes)
+                encoder, nlp, duplication_indexes, -0.425, 0.425)
             result = create_data_pair(batch, Record, random_similarity, nlp,
                                       k_sampling, FIXED_SEQUENCE_LENGTH,
                                       duplication_indexes)

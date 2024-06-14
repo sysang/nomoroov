@@ -168,8 +168,8 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 FIXED_SEQUENCE_LENGTH = 40
 
 BATCH_SIZE = 2048
-EPOCHS = 3
-CURRENT_EPOCH = 9
+EPOCHS = 5
+CURRENT_EPOCH = 19
 DATASET_SIZE = 42881181
 NUM_WORKERS = 7
 
