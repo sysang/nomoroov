@@ -11,13 +11,12 @@ class BaseModel(Model):
     json_data = BlobField()
 
 
-def test_data(dbname):
-    db = SqliteDatabase(f'sentence_embedding_training_data/{dbname}.db')
+def test_data(dbname, nrows=None):
+    db_uri = f'sentence_embedding_training_data/{dbname}.db'
+    print(f'[INFO] {db_uri}')
+    db = SqliteDatabase(db_uri)
 
-    class Record(BaseModel):
-        table_name = 'record'
-        class Meta:
-            database = db
+    Record = get_model_class(db)
 
     db.connect()
 
@@ -26,6 +25,9 @@ def test_data(dbname):
         counter += 1
         if counter % 1000 == 0:
             print(msgspec.json.decode(record.json_data, type=SentencePair))
+
+        if nrows is not None and counter >= nrows:
+            break
 
     db.close()
 
@@ -105,7 +107,4 @@ def merge_databases():
 
 if __name__ == '__main__':
     merge_databases()
-
-    # dbname = 'gutenberg-project-book-part-0.txt'
-    # test_data(dbname)
 

@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 
-DEFAULT_CFG = {
+CFG_V1 = {
     'embed_size': 300,
     'hidden_size1': 16,
     'hidden_size2': 64,
@@ -18,9 +18,54 @@ DEFAULT_CFG = {
 }
 
 
-class SentenceEmbedding(nn.Module):
-    def __init__(self, config=DEFAULT_CFG, batch_size=None, dropout1=None, dropout2=None, device=None, finetuning=False):
-        super(SentenceEmbedding, self).__init__()
+class SentenceEmbeddingBase(nn.Module):
+    def __init__(self, nlp, device):
+        super(SentenceEmbeddingBase, self).__init__()
+        self.nlp = nlp
+        self.device = device
+
+    def get_word_vector_matrix(self):
+        wv = map(lambda item: item[1], self.nlp.vocab.vectors.items())
+        wv = np.array(list(wv))
+        return torch.FloatTensor(np.array(wv, dtype=np.float32)).to(self.device)
+
+    def get_word_embedding(self):
+        return nn.Embedding.from_pretrained(self.get_word_vector_matrix())
+
+    def tensorise(self, doc):
+        tensor = torch.zeros(self.fixed_sequence_length, len(doc[0].vector), dtype=torch.float32)
+
+        for idx, token in enumerate(doc):
+            tensor[idx] = torch.from_numpy(token.vector)
+
+        tensor = tensor.to(self.device).unsqueeze(1)
+
+        return tensor
+
+    def text_similarity(self, text1, text2, nlp):
+        v1 = self.tensorise(text1, nlp(text1))
+        v2 = self.tensorise(text2, nlp(text2))
+
+        return self.similarity(v1, v2)
+
+    def doc_similarity(self, doc1, doc2):
+        v1 = self.tensorise(doc1)
+        v2 = self.tensorise(doc2)
+
+        return self.similarity(v1, v2)
+
+    def similarity(self, v1, v2):
+        embedded1 = self.forward(v1)
+        embedded2 = self.forward(v2)
+
+        distance = self.cos(embedded1, embedded2)
+
+        return distance[0].item()
+
+
+class SentenceEmbeddingV1(nn.Module):
+    def __init__(self, config, batch_size=None, dropout1=None, dropout2=None, device=None, finetuning=False):
+        super(SentenceEmbeddingV1, self).__init__()
         self.embed_size = config['embed_size']
         self.hidden_size1 = config['hidden_size1']
         self.hidden_size2 = config['hidden_size2']

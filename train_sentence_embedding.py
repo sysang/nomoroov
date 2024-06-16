@@ -9,32 +9,11 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset, Dataset, Features, Value
 import numpy as np
 import spacy
-import msgspec
 
-from sentence_embedding_model import SentenceEmbedding
-from sentence_embedding_model_v7 import SentenceEmbeddingV7
-from data_schema import SentencePair
-
-
-def dataset_map(samples):
-    sample1 = []
-    sample2 = []
-    r1 = []
-    r2 = []
-
-    for sample in samples['json_data']:
-        pair = msgspec.json.decode(sample, type=SentencePair)
-        sample1.append(pair.sample1)
-        sample2.append(pair.sample2)
-        r1.append(pair.sim_lower_r1)
-        r2.append(pair.sim_upper_r2)
-
-    return {
-        'sample1': sample1,
-        'sample2': sample2,
-        'sim_lower_r1': r1,
-        'sim_upper_r2': r2,
-    }
+from sentence_embedding_model_v7 import SentenceEmbeddingV7, CFG_V7
+from load_spacy import load_spacy, get_vector_zero_index, translate_sequence
+from evaluation import evaluate_fn, create_evaluating_dataloader
+from dataset_utils import dataset_map
 
 
 def apply_noise(sample, token_noise_magnitue, threshold, device):
@@ -54,13 +33,7 @@ def apply_noise(sample, token_noise_magnitue, threshold, device):
     return sample.add(noise)
 
 
-def get_word_vector_matrix(nlp, device):
-    wv = map(lambda item: item[1], nlp.vocab.vectors.items())
-    wv = np.array(list(wv))
-    return torch.FloatTensor(np.array(wv, dtype=np.float32)).to(device)
-
-
-def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimizer1, optimizer2,
+def train(dataloader, nlp, encoder1, encoder2, loss_fn, optimizer1, optimizer2,
           config, dataset_size, epoch, checkpoint_num):
     encoder1.train()
     encoder2.train()
@@ -74,18 +47,12 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
     sequence_noise_ratio = torch.tensor(
         config['sequence_noise_ratio'], dtype=torch.float32).to(device)
 
-    # threshold = torch.ones(
-    #     (fixed_sequence_length, batch_size, 1),
-    #     dtype=torch.float32).to(device).mul(sequence_noise_ratio)
-
     y0 = torch.zeros(batch_size, dtype=torch.float32).to(device)
 
-    cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+    word_embedding = encoder1.get_word_embedding()
+    idx = 1
 
     for batch, data in enumerate(dataloader):
-
-        # if batch <= 5399:
-        #     continue
 
         current = (batch + 1) * BATCH_SIZE
         remains = dataset_size - current
@@ -94,10 +61,6 @@ def train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn, optimize
         sample2 = data['sample2'].to(device)
         r1 = data['sim_lower_r1'].to(device)
         r2 = data['sim_upper_r2'].to(device)
-
-        # print('sample1[0]: ', sample1[0])
-        # print('sample2[0]: ', sample2[0])
-        # print('r1, r2:', r1, r2)
 
         sample1 = word_embedding(sample1)
         sample2 = word_embedding(sample2)
@@ -119,15 +82,17 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         en2_embedding1 = encoder2(transposed_s1)
         en2_embedding2 = encoder2(transposed_s2)
 
-        cosim1 = cos(en1_embedding1, en1_embedding2)
-        cosim2 = cos(en2_embedding1, en2_embedding2)
+        cosim1 = encoder1.cos(en1_embedding1, en1_embedding2)
+        cosim2 = encoder1.cos(en2_embedding1, en2_embedding2)
         pred1 = cosim1.sub(cosim2).abs()
         loss1 = loss_fn(pred1, y0)
 
+        pred2 = encoder1.cos(en1_embedding1, en1_embedding2)
+
         if random.randint(0, 1) == 0:
-            pred2 = cos(en1_embedding1, en1_embedding2)
+            pred2 = encoder1.cos(en1_embedding1, en1_embedding2)
         else:
-            pred2 = cos(en2_embedding1, en2_embedding2)
+            pred2 = encoder1.cos(en2_embedding1, en2_embedding2)
 
         masking_pred21 = pred2 < r1
         masking_pred21 = masking_pred21.int()
@@ -149,8 +114,8 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         optimizer1.zero_grad()
         optimizer2.step()
         optimizer2.zero_grad()
-        
-        if (batch + 1) % 250 == 0 or remains < BATCH_SIZE:
+
+        if (batch + 1) % 100 == 0 or remains < BATCH_SIZE:
             _loss1, _loss2, total_loss  = (
                     loss1.item(), loss2.item(), loss.item())
 
@@ -165,67 +130,52 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
                     f'tmp/checkpoints/batches/v{checkpoint_num}/epoch{epoch}_batch{batch + 1}_encoder2')
 
 
+SIM_LOWER_R1 = -0.075
+SIM_UPPER_R2 = 0.125
 FIXED_SEQUENCE_LENGTH = 40
 
-BATCH_SIZE = 2048
-EPOCHS = 5
-CURRENT_EPOCH = 19
-DATASET_SIZE = 42881181
-NUM_WORKERS = 7
-
-# BATCH_SIZE = 10
-# EPOCHS = 1
+# BATCH_SIZE = 3096
+# EPOCHS = 5
 # CURRENT_EPOCH = 0
-# DATASET_SIZE = 24738
-# NUM_WORKERS = 1
+# DATASET_SIZE = 42881181
+# NUM_WORKERS = 10
 
-LEARNING_RATE = 0.0005
+BATCH_SIZE = 128
+EPOCHS = 10
+CURRENT_EPOCH = 0
+DATASET_SIZE = 24738
+NUM_WORKERS = 1
+
+LEARNING_RATE = 0.002
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 7
-# ASYM_DROPOUT1 = 0.0
-# ASYM_DROPOUT2 = 0.0
+CHECKPOINT_NUM = 10
 
-CFG = {
-    'embed_size': 300,
-    'compress_size1': 60,
-    'hidden_size1': 16,
-    'hidden_size2': 64,
-    'dropout': 0.89,
-    'asym_dropout': 0.61,
-    'num_layers1': 4,
-    'num_layers2': 5,
-    'device': DEVICE,
-    'batch_size': BATCH_SIZE,
-    'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
-    'token_noise_magnitue': 4.9,
-    'sequence_noise_ratio': 0.41
-}
+CFG = CFG_V7
+CFG['device'] = DEVICE
+CFG['batch_size'] = BATCH_SIZE
+CFG['fixed_sequence_length'] = FIXED_SEQUENCE_LENGTH
 
 if __name__ == '__main__':
     print('training configurations: ', CFG)
+    switch = 0
 
-    nlp = spacy.load('en_core_web_lg')
-    nlp.vocab.vectors.resize((nlp.vocab.vectors.shape[0] + 1, nlp.vocab.vectors.shape[1]))
-    item_id = nlp.vocab.strings.add("vector_zero")
-    nlp.vocab.vectors.add(item_id, vector=np.zeros(300, dtype=np.float32))
+    nlp = load_spacy()
 
-    word_embedding = nn.Embedding.from_pretrained(get_word_vector_matrix(nlp, DEVICE))
-
-    # conn = sqlite3.connect('sentence_embedding_training_data/guardian_headlines.txt.db')
-    conn = sqlite3.connect('sentence_embedding_training_data/sqlite_file.db')
+    if switch == 0:
+        conn = sqlite3.connect('sentence_embedding_training_data/guardian_headlines.txt.db')
+    else:
+        conn = sqlite3.connect('sentence_embedding_training_data/sqlite_file.db')
     ds = Dataset.from_sql( "SELECT json_data FROM record", con=conn)
 
-    encoder1 = SentenceEmbeddingV7(config=CFG).to(DEVICE)
-    encoder2 = SentenceEmbeddingV7(config=CFG, dropout=CFG['asym_dropout']).to(DEVICE)
+    encoder1 = SentenceEmbeddingV7(config=CFG, nlp=nlp).to(DEVICE)
+    encoder2 = SentenceEmbeddingV7(config=CFG, nlp=nlp, dropout=CFG['asym_dropout']).to(DEVICE)
+    print(encoder1)
 
     print(f"[INFO] training version: {CHECKPOINT_NUM}")
-    print(f"[INFO] encoder1's dropout: {encoder1.dropout}")
-    print(f"[INFO] encoder2's dropout: {encoder2.dropout}")
-    # print(f"[INFO] encoder1's dropout1: {encoder1.dropout1}")
-    # print(f"[INFO] encoder1's dropout2: {encoder1.dropout2}")
-    # print(f"[INFO] encoder2's dropout1: {encoder2.dropout1}")
-    # print(f"[INFO] encoder2's dropout2: {encoder2.dropout2}")
+    print(f"[INFO] encoder1's dropout: {encoder1.dropout_ratio}")
+    print(f"[INFO] encoder2's dropout: {encoder2.dropout_ratio}")
+    print(f"[INFO] encoder's compress_size1: {encoder1.compress_size1}")
     print(f"[INFO] encoder's hidden_size1: {encoder1.hidden_size1}")
     print(f"[INFO] encoder's hidden_size2: {encoder1.hidden_size2}")
     print(f"[INFO] encoder's num_layers1: {encoder1.num_layers1}")
@@ -241,11 +191,18 @@ if __name__ == '__main__':
         encoder1.load_state_dict(torch.load(checkpoint1))
         encoder2.load_state_dict(torch.load(checkpoint2))
 
-    ds = ds.to_iterable_dataset(num_shards=NUM_WORKERS).map(dataset_map, batched=True)    
-    ds = ds.with_format('torch')
-    # ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
-    # ds = ds.with_format('torch', device=DEVICE)
-    # dataloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
+    if switch == 0:
+        ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
+        ds = ds.with_format('torch', device=DEVICE)
+        dataloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
+    else:
+        ds = ds.to_iterable_dataset(num_shards=NUM_WORKERS).map(dataset_map, batched=True)    
+        ds = ds.with_format('torch')
+
+    eval_dataset = 'processed-quora-duplicated-questions-train.csv'
+    eval_dataloader = create_evaluating_dataloader(eval_dataset, DEVICE, BATCH_SIZE)
+    evaluate = evaluate_fn(SentenceEmbeddingV7, CFG, nlp, 
+                           eval_dataloader, num_batches=3)
 
     loss_fn = nn.L1Loss()
     optimizer1 = torch.optim.Adam(encoder1.parameters(), lr=LEARNING_RATE)
@@ -255,18 +212,21 @@ if __name__ == '__main__':
         print(f'\n\nEpoch {epoch}\n----------------------------------')
 
 
-        ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 4.3))
-        dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                                prefetch_factor=NUM_WORKERS*2, persistent_workers=True,
-                                pin_memory=True, pin_memory_device=DEVICE)
+        if switch != 0:
+            ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 4.3))
+            dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
+                                    prefetch_factor=NUM_WORKERS*2, persistent_workers=True,
+                                    pin_memory=True, pin_memory_device=DEVICE, drop_last=True)
 
-        train(dataloader, word_embedding, nlp, encoder1, encoder2, loss_fn,
+        train(dataloader, nlp, encoder1, encoder2, loss_fn,
               optimizer1, optimizer2, CFG, DATASET_SIZE, epoch, CHECKPOINT_NUM)
 
-        torch.save(encoder1.state_dict(),
-                   f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{epoch}_encoder1')
-        torch.save(encoder2.state_dict(),
-                   f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{epoch}_encoder2')
+        checkpoint1 = f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{epoch}_encoder1'
+        encoder1.eval()
+        torch.save(encoder1.state_dict(), checkpoint1)
 
-        torch.save(encoder1.state_dict(), f'tmp/encoder1_v{CHECKPOINT_NUM}')
-        torch.save(encoder2.state_dict(), f'tmp/encoder2_v{CHECKPOINT_NUM}')
+        evaluate(checkpoint1)
+
+        checkpoint2 = f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{epoch}_encoder2'
+        encoder2.eval()
+        torch.save(encoder2.state_dict(), checkpoint2)

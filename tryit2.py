@@ -12,9 +12,13 @@ from load_spacy import load_spacy
 # model = SentenceEmbedding(CFG, finetuning=True).to('cpu')
 # print('number of parameters: ', sum( p.numel() for p in model.parameters() if p.requires_grad))
 
-model1 = SentenceEmbeddingV7(finetuning=False).to('cpu')
+nlp = load_spacy()
+
+model1 = SentenceEmbeddingV7(CFG, nlp=nlp, finetuning=False).to('cpu')
 print('number of parameters: ', sum( p.numel() for p in model1.parameters() if p.requires_grad))
 
-model2 = SentenceEmbeddingV7(finetuning=True).to('cpu')
-model2.eval()
+model2 = SentenceEmbeddingV7(CFG, nlp=nlp, finetuning=True).to('cpu')
 print('number of parameters: ', sum( p.numel() for p in model2.parameters() if p.requires_grad))
+
+model3 = SentenceEmbeddingV7(CFG, nlp=nlp, inferring=True).to('cpu')
+print('number of parameters: ', sum( p.numel() for p in model3.parameters() if p.requires_grad))

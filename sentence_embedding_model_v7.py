@@ -1,66 +1,74 @@
+import numpy as np
 from torch import nn
 from torch.autograd import Variable
 import torch
 
+from sentence_embedding_model import SentenceEmbeddingBase
 
-DEFAULT_CFG = {
+
+CFG_V7 = {
     'embed_size': 300,
-    'compress_size1': 60,
+    'compress_size1': 64,
     'hidden_size1': 16,
-    'hidden_size2': 64,
-    'dropout': 0.61,
-    'num_layers1': 4,
-    'num_layers2': 5,
+    'hidden_size2': 16,
+    'linear_size': 128,
+    'dropout': 0.89,
+    'asym_dropout': 0.81,
+    'num_layers1': 5,
+    'num_layers2': 4,
     'device': 'cpu',
     'batch_size': 1,
     'fixed_sequence_length': 40,
-    'token_noise_magnitue': 2.9,
-    'sequence_noise_ratio': 0.33
+    'token_noise_magnitue': 4.9,
+    'sequence_noise_ratio': 0.35
 }
 
 
-class SentenceEmbeddingV7(nn.Module):
+class SentenceEmbeddingV7(SentenceEmbeddingBase):
     def __init__(
             self,
-            config=DEFAULT_CFG,
+            config,
+            nlp,
             batch_size=None,
             dropout=None,
             device=None,
             finetuning=False,
             inferring=False):
-        super(SentenceEmbeddingV7, self).__init__()
+        super(SentenceEmbeddingV7, self).__init__(nlp, config['device'])
+        self.batch_size = batch_size if batch_size is not None else config['batch_size']
+        self.device = device if device is not None else config['device']
+
+        self.nlp = nlp
+
         self.embed_size = config['embed_size']
         self.compress_size1 = config['compress_size1']
         self.hidden_size1 = config['hidden_size1']
         self.hidden_size2 = config['hidden_size2']
-        self.dropout = dropout if dropout is not None else config['dropout']
+        self.linear_size = config['linear_size']
+        self.dropout_ratio = dropout if dropout is not None else config['dropout']
         self.num_layers1 = config['num_layers1']
         self.num_layers2 = config['num_layers2']
-        self.batch_size = batch_size if batch_size is not None else config['batch_size']
-        self.device = device if device is not None else config['device']
         self.fixed_sequence_length = config['fixed_sequence_length']
         self.finetuning = finetuning
         self.inferring = inferring
 
-        self.num_layers_i = 2
-
-        self.compress1 = nn.Linear(self.embed_size, 170, bias=False)
-        self.compress2 = nn.Linear(170, 100, bias=False)
-        self.compress3 = nn.Linear(100, self.compress_size1, bias=False)
+        self.compress1 = nn.Linear(self.embed_size, self.compress_size1 * 4, bias=False)
+        self.compress2 = nn.Linear(self.compress_size1 * 4, self.compress_size1 * 2, bias=False)
+        self.compress3 = nn.Linear(self.compress_size1 * 2, self.compress_size1, bias=False)
+        self.compress_norm = nn.BatchNorm1d(self.compress_size1)
 
         self.encoder1 = nn.GRU(input_size=self.compress_size1, hidden_size=self.hidden_size1,
                                num_layers=self.num_layers1)
-        # self.decode1 = nn.GRU(input_size=self.hidden_size1, hidden_size=self.hidden_size1,
-        #                       num_layers=1)
         self.decode2 = nn.GRU(input_size=self.hidden_size1, hidden_size=self.hidden_size2,
-                              num_layers=self.num_layers2, dropout=self.dropout)
+                              num_layers=self.num_layers2, dropout=self.dropout_ratio)
 
-        self.linear_out1 = nn.Linear(self.hidden_size2, self.hidden_size2, bias=False)
-        self.linear_out2 = nn.Linear(self.hidden_size2, self.hidden_size2, bias=False)
-        self.linear_out3 = nn.Linear(self.hidden_size2, self.hidden_size2, bias=False)
-        self.linear_out4 = nn.Linear(self.hidden_size2, self.hidden_size2, bias=False)
+        self.linear_out1 = nn.Linear(self.hidden_size2, self.linear_size, bias=False)
+        self.linear_out2 = nn.Linear(self.hidden_size2, self.linear_size, bias=False)
+        self.linear_out3 = nn.Linear(self.hidden_size2, self.linear_size, bias=False)
+        self.linear_out4 = nn.Linear(self.hidden_size2, self.linear_size, bias=False)
 
-        self.norm = nn.BatchNorm1d(self.hidden_size2 * 5)
+        self.norm = nn.BatchNorm1d(self.linear_size * self.num_layers2)
+        self.dropout = nn.Dropout(p=self.dropout_ratio)
 
         if finetuning or inferring:
             for p in self.compress1.parameters():
@@ -69,14 +77,15 @@ class SentenceEmbeddingV7(nn.Module):
                 p.requires_grad = False
             for p in self.compress3.parameters():
                 p.requires_grad = False
+            for p in self.compress_norm.parameters():
+                p.requires_grad = False
             for p in self.encoder1.parameters():
                 p.requires_grad = False
-            # for p in self.decode1.parameters():
-            #     p.requires_grad = False
 
         if inferring:
             self.compress_wv = self.compress_flexible_sequence
             self.apply_noise = self.bypass_applying_noise
+            self.dropout_ratio = 0.0
 
             for p in self.decode2.parameters():
                 p.requires_grad = False
@@ -87,6 +96,8 @@ class SentenceEmbeddingV7(nn.Module):
             for p in self.linear_out3.parameters():
                 p.requires_grad = False
             for p in self.linear_out4.parameters():
+                p.requires_grad = False
+            for p in self.norm.parameters():
                 p.requires_grad = False
         else:
             self.compress_wv = self.compress_fixed_sequence
@@ -103,7 +114,7 @@ class SentenceEmbeddingV7(nn.Module):
             dtype=torch.float32).to(self.device).mul(self.sequence_noise_ratio)
 
     def initHiddenCell(self, batch_size, hidden_size, num_layers=1):
-        return Variable(torch.ones(num_layers, batch_size, hidden_size)).to(self.device)
+        return Variable(torch.rand(num_layers, batch_size, hidden_size)).to(self.device)
 
     def forward(self, input):
         compressed = self.compress_wv(input)
@@ -119,21 +130,18 @@ class SentenceEmbeddingV7(nn.Module):
 
         noised_encoded_1 = self.apply_noise(filtered_encoded_1)
 
-        # decoded_hidden_1 = self.initHiddenCell(self.batch_size, self.hidden_size1,
-        #                                        self.num_layers1)
-        # decoded_1, _ = self.decode1(noised_encoded_1, decoded_1)
+        _, hidden3 = self.decode2(noised_encoded_1, encoded_hidden_1[1:])
 
-        decoded_hidden_2 = self.initHiddenCell(self.batch_size, self.hidden_size2,
-                                               self.num_layers2)
-        _, hidden3 = self.decode2(noised_encoded_1, decoded_hidden_2)
+        output1 = self.dropout(hidden3[0])
+        output1 = self.linear_out1(output1)
+        output2 = self.dropout(hidden3[1])
+        output2 = self.linear_out2(output2)
+        output3 = self.dropout(hidden3[2])
+        output3 = self.linear_out3(output3)
+        output4 = self.dropout(hidden3[3])
+        output4 = self.linear_out4(output4)
 
-        output1 = self.linear_out1(hidden3[0])
-        output2 = self.linear_out2(hidden3[1])
-        output3 = self.linear_out3(hidden3[2])
-        output4 = self.linear_out4(hidden3[3])
-        output5 = hidden3[4]
-
-        output = torch.cat((output1, output2, output3, output4, output5), dim=1)
+        output = torch.cat((output1, output2, output3, output4), dim=1)
 
         return self.norm(output)
 
@@ -160,7 +168,8 @@ class SentenceEmbeddingV7(nn.Module):
         return sample
 
     def compress_linear(self, input):
-        return self.compress3(self.compress2(self.compress1(input)))
+        return self.compress_norm(self.compress3(self.compress2(self.compress1(input))))
+        # return self.compress1(input)
 
     def compress_fixed_sequence(self, input):
         return torch.stack((
@@ -213,32 +222,3 @@ class SentenceEmbeddingV7(nn.Module):
 
         return torch.stack(stacks, dim=0)
 
-    def tensorise(self, doc):
-        tensor = torch.zeros(len(doc), len(doc[0].vector), dtype=torch.float32)
-
-        for idx, token in enumerate(doc):
-            tensor[idx] = torch.from_numpy(token.vector)
-
-        tensor = tensor.to(self.device).unsqueeze(1)
-
-        return tensor
-
-    def text_similarity(self, text1, text2, nlp):
-        v1 = self.tensorise(text1, nlp(text1))
-        v2 = self.tensorise(text2, nlp(text2))
-
-        return self.similarity(v1, v2)
-
-    def doc_similarity(self, doc1, doc2):
-        v1 = self.tensorise(doc1)
-        v2 = self.tensorise(doc2)
-
-        return self.similarity(v1, v2)
-
-    def similarity(self, v1, v2):
-        embedded1 = self.forward(v1)
-        embedded2 = self.forward(v2)
-
-        distance = self.cos(embedded1, embedded2)
-
-        return distance[0].item()

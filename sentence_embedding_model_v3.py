@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 
-DEFAULT_CFG = {
+CFG_V3 = {
     'embed_size': 300,
     'hidden_size1': 16,   # v2
     'hidden_size2': 64,  # v2
@@ -19,7 +19,7 @@ DEFAULT_CFG = {
 
 
 class SentenceEmbeddingV3(nn.Module):
-    def __init__(self, config=DEFAULT_CFG, batch_size=None, dropout1=None, dropout2=None, device=None):
+    def __init__(self, config, batch_size=None, dropout1=None, dropout2=None, device=None):
         super(SentenceEmbeddingV3, self).__init__()
         self.embed_size = config['embed_size']
         self.hidden_size1 = config['hidden_size1']

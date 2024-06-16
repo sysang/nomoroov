@@ -11,10 +11,28 @@ import numpy as np
 import spacy
 
 from sentence_embedding_model import SentenceEmbedding
-from train_sentence_embedding import dataset_map, get_word_vector_matrix
+from train_sentence_embedding import dataset_map, CFG
+from load_spacy import load_spacy
 
 
-def train(dataloader, word_embedding, nlp, encoder, loss_fn, optimizer,
+def get_database_uri(dataset_name, checkpoint_num, current_epoch, iteration):
+    db_uri = f'sentence_embedding_training_data/\
+{dataset_name}_v{checkpoint_num}_epoch{current_epoch}_iter{iteration - 1}.db'
+
+    return db_uri
+
+
+def get_checkpoint_filepath(checkpoint_num, current_epoch, iteration):
+    checkpoint = f'tmp/finetuned/iterations/\
+v{checkpoint_num}_epoch{current_epoch}_iter{iteration - 1}'
+
+    return checkpoint
+
+
+def get_new_checkpoint_filepath(checkpoint_num, current_epoch, iteration):
+    return get_checkpoint_filepath(checkpoint_num, current_epoch, iteration + 1)
+
+def train(dataloader, nlp, encoder, loss_fn, optimizer,
           config, dataset_size, epoch, checkpoint_num):
     encoder.train()
 
@@ -23,7 +41,7 @@ def train(dataloader, word_embedding, nlp, encoder, loss_fn, optimizer,
 
     y0 = torch.zeros(batch_size, dtype=torch.float32).to(device)
 
-    cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+    word_embedding = encoder.get_word_embedding()
 
     for batch, data in enumerate(dataloader):
 
@@ -52,7 +70,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         embedding1 = encoder(transposed_s1)
         embedding2 = encoder(transposed_s2)
 
-        pred2 = cos(embedding1, embedding2)
+        pred2 = encoder.cos(embedding1, embedding2)
 
         masking_pred21 = pred2 < r1
         masking_pred21 = masking_pred21.int()
@@ -78,14 +96,12 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
 {batch}/{current}/{dataset_size} {ts}')
 
 
-FIXED_SEQUENCE_LENGTH = 40
-
 BATCH_SIZE = 3096
 EPOCHS = 300
 CURRENT_EPOCH = 69
 CHECKPOINT_NUM = 3
 DATASET_SIZE = 623025
-NUM_WORKERS = 8
+NUM_WORKERS = 7
 ITERATION = 1
 
 # BATCH_SIZE = 3
@@ -96,70 +112,36 @@ ITERATION = 1
 
 LEARNING_RATE = 0.001
 DEVICE = 'cuda'
+CFG['device'] = DEVICE
 
 
-CFG = {
-    'embed_size': 300,
-    # 'hidden_size1': 32,   # v1
-    # 'hidden_size2': 128,  # v1
-    'hidden_size1': 16,   # v2
-    'hidden_size2': 64,  # v2
-    'dropout1': 0.21,
-    'dropout2': 0.93,
-    'num_layers1': 2,
-    # 'num_layers2': 2,     # v1
-    'num_layers2': 3,     # v2
-    'device': DEVICE,
-    'batch_size': BATCH_SIZE,
-    'fixed_sequence_length': FIXED_SEQUENCE_LENGTH,
-    'token_noise_magnitue': 4.9,
-    'sequence_noise_ratio': 0.67
-}
-
-assert ITERATION is not None
+assert ITERATION is not None and ITERATION > 0
 
 if __name__ == '__main__':
     print('training configurations: ', CFG)
 
-    nlp = spacy.load('en_core_web_lg')
-    nlp.vocab.vectors.resize((nlp.vocab.vectors.shape[0] + 1,
-                              nlp.vocab.vectors.shape[1]))
-    item_id = nlp.vocab.strings.add("vector_zero")
-    nlp.vocab.vectors.add(item_id, vector=np.zeros(300, dtype=np.float32))
-
-    word_embedding = nn.Embedding.from_pretrained(
-        get_word_vector_matrix(nlp, DEVICE))
+    nlp = load_spacy()
 
     dataset_name = 'processed-quora-duplicated-questions-train.csv'
-    if ITERATION == 0 :
-        db_uri = f'sentence_embedding_training_data/{dataset_name}.db'
-    else:
-        db_uri = f'sentence_embedding_training_data/{dataset_name}_iter{ITERATION - 1}.db'
+    db_uri = get_database_uri(dataset_name, CHECKPOINT_NUM, CURRENT_EPOCH, ITERATION)
 
     conn = sqlite3.connect(db_uri)
     ds = Dataset.from_sql( "SELECT json_data FROM record", con=conn)
 
     print(f'[INFO] Load dataset from: {db_uri}')
 
-    encoder = SentenceEmbedding(CFG, finetuning=True).to(DEVICE)
+    encoder = SentenceEmbedding(config=CFG, nlp=nlp, finetuning=True).to(DEVICE)
 
     print(f"[INFO] training version: {CHECKPOINT_NUM}")
-    print(f"[INFO] encoder's dropout1: {encoder.dropout1}")
-    print(f"[INFO] encoder's dropout2: {encoder.dropout2}")
-    print(f"[INFO] encoder's hidden_size1: {encoder.hidden_size1}")
-    print(f"[INFO] encoder's hidden_size2: {encoder.hidden_size2}")
-    print(f"[INFO] encoder's num_layers1: {encoder.num_layers1}")
-    print(f"[INFO] encoder's num_layers2: {encoder.num_layers2}")
+    print(encoder)
 
-    if ITERATION == 0:
+    if ITERATION == 1:
         checkpoint = f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{CURRENT_EPOCH}_encoder1'
     else:
-        checkpoint = f'tmp/finetuned/iterations/v{CHECKPOINT_NUM}_epoch{CURRENT_EPOCH}_iter{ITERATION - 1}'
+        checkpoint = get_checkpoint_filepath(CHECKPOINT_NUM, CURRENT_EPOCH, ITERATION)
 
     print(f'[INFO] Load checkpoint: {checkpoint}')
     encoder.load_state_dict(torch.load(checkpoint))
-
-    print('[INFO] Number of parameters: ', sum( p.numel() for p in encoder.parameters() if p.requires_grad))
 
     ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
     ds = ds.with_format('torch', device=DEVICE)
@@ -182,12 +164,9 @@ if __name__ == '__main__':
         #                         persistent_workers=True, pin_memory=True,
         #                         pin_memory_device=DEVICE)
 
-        train(dataloader, word_embedding, nlp, encoder, loss_fn,
+        train(dataloader, nlp, encoder, loss_fn,
               optimizer, CFG, DATASET_SIZE, epoch, CHECKPOINT_NUM)
 
-        torch.save(
-            encoder.state_dict(),
-            f'tmp/finetuned/epoches/v{CHECKPOINT_NUM}_epoch{CURRENT_EPOCH}_iter{ITERATION}_epoch{epoch}')
-        torch.save(
-            encoder.state_dict(),
-            f'tmp/finetuned/iterations/v{CHECKPOINT_NUM}_epoch{CURRENT_EPOCH}_iter{ITERATION}')
+        encoder.eval()
+        new_checkpoint = get_new_checkpoint_filepath(CHECKPOINT_NUM, CURRENT_EPOCH, ITERATION)
+        torch.save( encoder.state_dict(), new_checkpoint)

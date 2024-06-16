@@ -9,9 +9,7 @@ from spacy.strings import hash_string
 from torch import nn
 from peewee import SqliteDatabase
 
-
-from sentence_embedding_model import SentenceEmbedding
-from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH
+from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH, SIM_LOWER_R1, SIM_UPPER_R2
 from database import BaseModel
 from data_schema import SentencePair
 from load_spacy import load_spacy
@@ -76,6 +74,8 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
     counter = 0
     caches = set()
     batch = []
+    batch_size = 1000
+    batch_count = 0
 
     for i in range(quantity):
         text11 = raw_data[i]
@@ -98,15 +98,17 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
         )
         batch.append({'json_data': msgspec.json.encode(pair)})
         counter += 1
+        batch_count += 1
 
+        text22 = 'n/a'
+        r21 = 'n/a'
+        r22 = 'n/a'
         if duplication_indexes is not None and i + 1 <= quantity - 1:
             hashed11 = hash_string(text11)
             j = i + 1
             text22 = raw_data[j]
             doc22 = nlp(text22)
             hashed22 = hash_string(text22)
-            r21 = 'n/a'
-            r22 = 'n/a'
 
             if duplication_indexes.get((hashed11, hashed22), False):
                 caches.add((i, j))
@@ -124,10 +126,11 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
                         sim_upper_r2=r22
                     )
                     batch.append({'json_data': msgspec.json.encode(pair)})
-                    # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r11}\tr2: {r22}')
                     counter += 1
+                    batch_count += 1
 
-        for _ in range(k_sampling):
+        sampling_count = 0
+        while True:
             while True:
                 j = random.choice(range(quantity))
                 if i !=j and (i, j) not in caches:
@@ -150,20 +153,27 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
                     sim_upper_r2=r32
                 )
                 batch.append({'json_data': msgspec.json.encode(pair)})
+
+                sampling_count +=1
+                batch_count += 1
                 counter += 1
 
-            if counter % 1000 == 0:
-                print('-----------------------------------------------------------')
-                print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
-                # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
-                print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
-                print('-----------------------------------------------------------')
-                Record.insert_many(batch).execute()
-                batch = []
+            if sampling_count >= k_sampling:
+                break
+
+        if counter >= batch_size:
+            print('-----------------------------------------------------------')
+            print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
+            print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
+            print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
+            print('-----------------------------------------------------------')
+            Record.insert_many(batch).execute()
+            batch = []
+            batch_count = 0
 
     if len(batch) > 0:
         print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
-        # print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
+        print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
         print(f'[INFO] Added pair: {text11}\t{text32}\tr1: {r31}\tr2: {r32}')
         Record.insert_many(batch).execute()
 
@@ -203,10 +213,10 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    WINDOW_SIZE = 2000
+    WINDOW_SIZE = 2500
     K_SAMPLING = 20
-    R1 = -0.425
-    R2 = 0.425
+    R1 = SIM_LOWER_R1
+    R2 = SIM_UPPER_R2
 
     random_similarity = random_similarity_fn(r1=R1, r2=R2)
 

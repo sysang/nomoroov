@@ -8,9 +8,10 @@ from peewee import SqliteDatabase
 
 from cook_sentence_embedding_data import create_data_pair
 from load_spacy import load_spacy
-from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH
+from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH, SIM_LOWER_R1, SIM_UPPER_R2
+from fine_tune_sentence_embedding import get_database_uri, get_checkpoint_filepath
 from sentence_embedding_model import SentenceEmbedding
-from database import BaseModel
+from database import BaseModel, get_model_class
 
 
 def iterate_data(file):
@@ -28,8 +29,8 @@ def iterate_data(file):
             yield sent1, sent2
 
 
-def estimate_similarity_fn(model, nlp, duplication_indexes, r1,
-                           r2, propotional_threshold=0.89,
+def estimate_similarity_fn(duplication_indexes, r1,
+                           r2, model=None, propotional_threshold=0.89,
                            identical_threshold=0.95):
     def estimate_similarity(doc1, doc2):
         hashed1 = hash_string(str(doc1))
@@ -40,6 +41,9 @@ def estimate_similarity_fn(model, nlp, duplication_indexes, r1,
 
         if duplication_indexes.get((hashed1, hashed2), False):
             return (propotional_threshold, 1)
+
+        if model is None:
+            return (r1, r2)
 
         score = model.doc_similarity(doc1, doc2)
 
@@ -55,12 +59,9 @@ def estimate_similarity_fn(model, nlp, duplication_indexes, r1,
 
 
 if __name__ == '__main__':
-    CHECKPOINT_NUM = 3
-    CURRENT_EPOCH = 69
-    ITERATION = 1
-
     datasets = {
             '1': 'processed-quora-duplicated-questions-train.csv',
+            '2': 'processed-quora-duplicated-questions-test.csv',
     }
 
     parser = argparse.ArgumentParser(
@@ -69,48 +70,59 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target',
                         choices=list(datasets.keys()),
                         required=False, default='1')
+    parser.add_argument('-c', '--checkpoint', type=int, default=-1)
+    parser.add_argument('-e', '--epoch', type=int, default=1)
+    parser.add_argument('-i', '--iteration', type=int, default=0)
+    parser.add_argument('-n', '--noinference', type=int, choices=[0, 1], default=1)
     args = parser.parse_args()
+
     target = args.target
+    checkpoint_num = args.checkpoint
+    current_epoch = args.epoch
+    iteration = args.iteration
+    no_inference = bool(args.noinference)
 
     nlp = load_spacy()
 
-    if ITERATION == 0 :
-        checkpoint = f'tmp/checkpoints/v{CHECKPOINT_NUM}/epoch{CURRENT_EPOCH}_encoder1'
-    else:
-        checkpoint = f'tmp/finetuned/iterations/v{CHECKPOINT_NUM}_epoch{CURRENT_EPOCH}_iter{ITERATION - 1}'
+    if not no_inference:
+        assert checkpoint_num != -1, "Must speficy model trained checkpoint."
 
-    print(f'Load checkpoint: {checkpoint}')
 
     CFG['device'] = 'cpu'
     CFG['batch_size'] = 1
 
-    encoder = SentenceEmbedding(CFG).to('cpu')
-    encoder.load_state_dict(torch.load(checkpoint))
-    encoder.eval()
+    if no_inference:
+        encoder = None
+    else:
+        if iteration == 0 :
+            checkpoint = f'tmp/checkpoints/v{checkpoint_num}/epoch{current_epoch}_encoder1'
+        else:
+            checkpoint = get_checkpoint_filepath(checkpoint_num, current_epoch, iteration)
+
+        print(f'Load checkpoint: {checkpoint}')
+
+        encoder = SentenceEmbedding(CFG).to('cpu')
+        encoder.load_state_dict(torch.load(checkpoint))
 
     window_size = 2000
     k_sampling = 3
+    R1 = SIM_LOWER_R1
+    R2 = SIM_UPPER_R2
 
     name = datasets[target]
-
-    print(f'[INFO] Process dataset: {name}')
-
-    if ITERATION == 0 :
+    if no_inference:
         dbfile = f'sentence_embedding_training_data/{name}.db'
     else:
-        dbfile = f'sentence_embedding_training_data/{name}_iter{ITERATION - 1}.db'
+        dbfile = get_database_uri(name, checkpoint_num, current_epoch, iteration)
+
+    print(f'[INFO] Working on database: {dbfile}')
+
     if os.path.exists(dbfile):
         print(f'[INFO] Removed database {dbfile}.')
         os.remove(dbfile)
 
     db = SqliteDatabase(dbfile)
-
-    class Record(BaseModel):
-        table_name = 'record'
-
-        class Meta:
-            database = db
-
+    Record = get_model_class(db)
     db.connect()
     db.create_tables([Record])
 
@@ -118,9 +130,11 @@ if __name__ == '__main__':
     data_iter = iterate_data(data_file)
     next(data_iter, None)
 
+    print(f'[INFO] Process data: {data_file}')
+
     counter = 0
     batch = []
-    max_length = 40
+    max_length = FIXED_SEQUENCE_LENGTH
     total_quantity = 0
     duplication_indexes = {}
 
@@ -152,10 +166,11 @@ if __name__ == '__main__':
             counter += 2
 
         if counter >= window_size or (sent1 is None and len(batch) > 0):
-            random_similarity = estimate_similarity_fn(
-                encoder, nlp, duplication_indexes, -0.425, 0.425)
+            random_similarity = estimate_similarity_fn(duplication_indexes,
+                                                       model=encoder, r1=R1,
+                                                       r2=R2)
             result = create_data_pair(batch, Record, random_similarity, nlp,
-                                      k_sampling, FIXED_SEQUENCE_LENGTH,
+                                      k_sampling, max_length,
                                       duplication_indexes)
             total_quantity += result
             batch = []
