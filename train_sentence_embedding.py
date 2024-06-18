@@ -115,6 +115,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         pred22 = pred22.mul(masking_pred22)
 
         pred2 = pred21 + pred22
+        pred2 = pred2.mul(3.3)
         loss2 = loss_fn(pred2, y0)
 
         loss = loss1.add(loss2)
@@ -125,7 +126,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         optimizer2.step()
         optimizer2.zero_grad()
 
-        if (batch + 1) % 200 == 0 or remains < BATCH_SIZE:
+        if (batch + 1) % 1000 == 0 or remains < BATCH_SIZE:
             _loss1, _loss2, total_loss  = (
                     loss1.item(), loss2.item(), loss.item())
 
@@ -134,6 +135,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
             print(f'{checkpoint_num}. loss1:{_loss1:0.5f}  loss2:{_loss2:0.5f} \
 total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 
+        if (batch + 1) % 10000 == 0 or remains < BATCH_SIZE:
             torch.save(encoder1.state_dict(),
                     f'tmp/checkpoints/batches/v{checkpoint_num}/epoch{epoch}_batch{batch + 1}_encoder1')
             torch.save(encoder2.state_dict(),
@@ -148,9 +150,10 @@ IDENTICAL_THRESHOLD = 0.95
 FIXED_SEQUENCE_LENGTH = 40
 
 SWITCH = 1
-BATCH_SIZE = 2500
+# BATCH_SIZE = 2500
+BATCH_SIZE = 512
 EPOCHS = 10
-CURRENT_EPOCH = 0
+CURRENT_EPOCH = 1
 DATASET_SIZE = 42881181
 NUM_WORKERS = 7
 
@@ -162,10 +165,10 @@ NUM_WORKERS = 7
 # DATASET_SIZE = 24738
 # NUM_WORKERS = 1
 
-LEARNING_RATE = 0.002
+LEARNING_RATE = 0.001
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 11
+CHECKPOINT_NUM = 12
 
 CFG = CFG_V7
 CFG['device'] = DEVICE
@@ -222,7 +225,7 @@ if __name__ == '__main__':
     eval_dataset = 'processed-quora-duplicated-questions-train.csv'
     eval_dataloader = create_evaluating_dataloader(eval_dataset, DEVICE, BATCH_SIZE)
     evaluate = evaluate_fn(SentenceEmbeddingV7, CFG, nlp, 
-                           eval_dataloader, num_batches=3)
+                           eval_dataloader, num_batches=100)
 
     loss_fn = nn.L1Loss()
     optimizer1 = torch.optim.Adam(encoder1.parameters(), lr=LEARNING_RATE)
@@ -233,9 +236,9 @@ if __name__ == '__main__':
 
 
         if switch != 0:
-            ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 4.3))
+            ds = ds.shuffle(seed=random.randint(1, 999), buffer_size=math.ceil(BATCH_SIZE * 20))
             dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                                    prefetch_factor=NUM_WORKERS*2, persistent_workers=True,
+                                    prefetch_factor=NUM_WORKERS*20, persistent_workers=True,
                                     pin_memory=True, pin_memory_device=DEVICE, drop_last=True)
 
         train(dataloader, nlp, encoder1, encoder2, loss_fn,

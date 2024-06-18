@@ -33,15 +33,15 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         proportional_total = 0
         overall_error = 0
 
-        similarity_threshold1 = 0.53
+        similarity_threshold1 = 0.33
         correct1 = 0
         false_similarity1 = 0
         true_similarity1 = 0
-        similarity_threshold2 = 0.61
+        similarity_threshold2 = 0.53
         correct2 = 0
         false_similarity2 = 0
         true_similarity2 = 0
-        similarity_threshold3 = 0.73
+        similarity_threshold3 = 0.75
         correct3 = 0
         false_similarity3 = 0
         true_similarity3 = 0
@@ -147,19 +147,18 @@ def create_evaluating_dataloader(dataset, device, batch_size):
 if __name__ == '__main__':
     DEVICE = 'cuda'
     BATCH_SIZE = 512
-    NUM_BATCHES = 100
+    NUM_BATCHES = 200
     CFG = CFG_V7
     CFG['batch_size'] = BATCH_SIZE
     CFG['device'] = DEVICE
 
     nlp = load_spacy()
 
-    # checkpoint = 'tmp/checkpoints/v3/epoch69_encoder1'
-    # checkpoint = 'tmp/checkpoints/v10/epoch5_encoder1'
-    checkpoint1 = 'tmp/checkpoints/v10/epoch17_encoder1'
-    checkpoint2 = 'tmp/checkpoints/v10/epoch17_encoder2'
-    # checkpoint = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    # checkpoint = 'tmp/checkpoints/batches/v9/epoch1_batch1800_encoder1'
+    checkpoint1 = 'tmp/checkpoints/v12/epoch1_encoder1'
+    checkpoint2 = 'tmp/checkpoints/v12/epoch1_encoder2'
+    # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
+    # checkpoint1 = 'tmp/checkpoints/batches/v12/batch60000_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/batches/v12/batch60000_encoder2'
 
     dataset = 'processed-quora-duplicated-questions-train.csv'
     print(f'[INFO] evaluating dataset: {dataset}')
