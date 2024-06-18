@@ -23,7 +23,7 @@ def test_data(dbname, nrows=None):
     counter = 0
     for record in Record.select():
         counter += 1
-        if counter % 1000 == 0:
+        if counter % 10 == 0:
             print(msgspec.json.decode(record.json_data, type=SentencePair))
 
         if nrows is not None and counter >= nrows:

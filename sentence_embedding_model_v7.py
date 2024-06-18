@@ -19,8 +19,8 @@ CFG_V7 = {
     'device': 'cpu',
     'batch_size': 1,
     'fixed_sequence_length': 40,
-    'token_noise_magnitue': 4.9,
-    'sequence_noise_ratio': 0.35
+    'token_noise_magnitue': 2.9,
+    'sequence_noise_ratio': 0.23
 }
 
 
@@ -116,7 +116,7 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
     def initHiddenCell(self, batch_size, hidden_size, num_layers=1):
         return Variable(torch.rand(num_layers, batch_size, hidden_size)).to(self.device)
 
-    def forward(self, input):
+    def forward(self, input, noise_preferring=0):
         compressed = self.compress_wv(input)
 
         encoded_hidden_1 = self.initHiddenCell(self.batch_size, self.hidden_size1,
@@ -128,7 +128,10 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
         sample_length_filter = sample_length_filter.int()
         filtered_encoded_1 = encoded_1.mul(sample_length_filter)
 
-        noised_encoded_1 = self.apply_noise(filtered_encoded_1)
+        noise = self.apply_noise(filtered_encoded_1)
+        noise = noise.mul(noise_preferring)
+
+        noised_encoded_1 = filtered_encoded_1.add(noise)
 
         _, hidden3 = self.decode2(noised_encoded_1, encoded_hidden_1[1:])
 
@@ -160,9 +163,8 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
         noise = torch.rand(sample.shape, dtype=torch.float32).to(self.device)
         noise = noise.mul(self.token_noise_magnitue).mul(sample)
         noise = noise.mul(noise_masking).mul(sample_length_filter)
-        noised = sample.add(noise)
 
-        return noised
+        return noise
 
     def bypass_applying_noise(self, sample):
         return sample

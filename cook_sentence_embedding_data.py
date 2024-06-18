@@ -9,7 +9,7 @@ from spacy.strings import hash_string
 from torch import nn
 from peewee import SqliteDatabase
 
-from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH, SIM_LOWER_R1, SIM_UPPER_R2
+from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH, SIM_LOWER_R1, SIM_UPPER_R2, IDENTICAL_THRESHOLD
 from database import BaseModel
 from data_schema import SentencePair
 from load_spacy import load_spacy
@@ -26,13 +26,13 @@ def iterate_data(file):
             yield line.strip()
 
 
-def random_similarity_fn(r1=-0.125, r2=0.125, propotional_threshold=0.95):
+def random_similarity_fn(r1=-0.125, r2=0.125, identical_threshold=0.95):
     def random_similarity(doc1, doc2):
         text1 = str(doc1)
         text2 = str(doc2)
 
         if text1 == text2:
-            return (propotional_threshold, 1)
+            return (identical_threshold, 1)
 
         return (r1, r2)
 
@@ -161,7 +161,7 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
             if sampling_count >= k_sampling:
                 break
 
-        if counter >= batch_size:
+        if batch_count >= batch_size:
             print('-----------------------------------------------------------')
             print(f'[INFO] Added pair: {text11}\t{text12}\tr1: {r11}\tr2: {r12}')
             print(f'[INFO] Added pair: {text11}\t{text22}\tr1: {r21}\tr2: {r22}')
@@ -218,7 +218,7 @@ if __name__ == '__main__':
     R1 = SIM_LOWER_R1
     R2 = SIM_UPPER_R2
 
-    random_similarity = random_similarity_fn(r1=R1, r2=R2)
+    random_similarity = random_similarity_fn(r1=R1, r2=R2, identical_threshold=IDENTICAL_THRESHOLD)
 
     print(f'[INFO] Process dataset: {name}')
 

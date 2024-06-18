@@ -10,7 +10,6 @@ from cook_sentence_embedding_data import create_data_pair
 from load_spacy import load_spacy
 from train_sentence_embedding import CFG, FIXED_SEQUENCE_LENGTH, SIM_LOWER_R1, SIM_UPPER_R2
 from fine_tune_sentence_embedding import get_database_uri, get_checkpoint_filepath
-from sentence_embedding_model import SentenceEmbedding
 from database import BaseModel, get_model_class
 
 

@@ -10,7 +10,7 @@ from datasets import Dataset
 import numpy as np
 import spacy
 
-from sentence_embedding_model import SentenceEmbedding
+from sentence_embedding_model_v7 import SentenceEmbeddingV7
 from train_sentence_embedding import dataset_map, CFG
 from load_spacy import load_spacy
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     print(f'[INFO] Load dataset from: {db_uri}')
 
-    encoder = SentenceEmbedding(config=CFG, nlp=nlp, finetuning=True).to(DEVICE)
+    encoder = SentenceEmbeddingV7(config=CFG, nlp=nlp, finetuning=True).to(DEVICE)
 
     print(f"[INFO] training version: {CHECKPOINT_NUM}")
     print(encoder)
