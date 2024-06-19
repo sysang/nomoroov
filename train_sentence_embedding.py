@@ -142,33 +142,32 @@ total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
                     f'tmp/checkpoints/batches/v{checkpoint_num}/epoch{epoch}_batch{batch + 1}_encoder2')
 
 
-SIM_LOWER_R1 = -0.075
-SIM_UPPER_R2 = 0.125
+SIM_LOWER_R1 = -0.375
+SIM_UPPER_R2 = 0.425
 PROPOTIONAL_THRESHOLD = 0.89
 IDENTICAL_THRESHOLD = 0.95
 
 FIXED_SEQUENCE_LENGTH = 40
 
 SWITCH = 1
-# BATCH_SIZE = 2500
 BATCH_SIZE = 512
 EPOCHS = 10
-CURRENT_EPOCH = 1
+CURRENT_EPOCH = 9
 DATASET_SIZE = 42881181
 NUM_WORKERS = 7
+CHECKPOINT_NUM = 12
 
 # SWITCH = 0
-# BATCH_SIZE = 5
-# BATCH_SIZE = 512
-# EPOCHS = 1
+# BATCH_SIZE = 64
+# EPOCHS = 3
 # CURRENT_EPOCH = 0
 # DATASET_SIZE = 24738
 # NUM_WORKERS = 1
+# CHECKPOINT_NUM = 99
 
 LEARNING_RATE = 0.001
 DEVICE = 'cuda'
 
-CHECKPOINT_NUM = 12
 
 CFG = CFG_V7
 CFG['device'] = DEVICE
@@ -181,10 +180,10 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    if switch == 0:
-        db_uri = 'sentence_embedding_training_data/guardian_headlines.txt.db'
-    else:
+    if switch != 0:
         db_uri = 'sentence_embedding_training_data/sqlite_file.db'
+    else:
+        db_uri = 'sentence_embedding_training_data/guardian_headlines.txt.db'
 
     conn = sqlite3.connect(db_uri)
     ds = Dataset.from_sql( "SELECT json_data FROM record", con=conn)
@@ -214,13 +213,12 @@ if __name__ == '__main__':
 
     print(f'[INFO] training data: {db_uri}')
 
-    if switch == 0:
-        ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
-        ds = ds.with_format('torch', device=DEVICE)
-        dataloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
-    else:
+    if switch != 0:
         ds = ds.to_iterable_dataset(num_shards=NUM_WORKERS).map(dataset_map, batched=True)    
         ds = ds.with_format('torch')
+    else:
+        ds = ds.map(dataset_map, keep_in_memory=True, batched=True, num_proc=NUM_WORKERS)
+        ds = ds.with_format('torch', device=DEVICE)
 
     eval_dataset = 'processed-quora-duplicated-questions-train.csv'
     eval_dataloader = create_evaluating_dataloader(eval_dataset, DEVICE, BATCH_SIZE)
@@ -240,6 +238,8 @@ if __name__ == '__main__':
             dataloader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                     prefetch_factor=NUM_WORKERS*20, persistent_workers=True,
                                     pin_memory=True, pin_memory_device=DEVICE, drop_last=True)
+        else:
+            dataloader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
         train(dataloader, nlp, encoder1, encoder2, loss_fn,
               optimizer1, optimizer2, CFG, DATASET_SIZE, epoch, CHECKPOINT_NUM)

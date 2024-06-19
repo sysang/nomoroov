@@ -69,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target',
                         choices=list(datasets.keys()),
                         required=False, default='1')
+    parser.add_argument('-k', '--k_sampling', type=int, default=-5)
     parser.add_argument('-c', '--checkpoint', type=int, default=-1)
     parser.add_argument('-e', '--epoch', type=int, default=1)
     parser.add_argument('-i', '--iteration', type=int, default=0)
@@ -76,6 +77,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     target = args.target
+    k_sampling = args.k_sampling
     checkpoint_num = args.checkpoint
     current_epoch = args.epoch
     iteration = args.iteration
@@ -104,7 +106,6 @@ if __name__ == '__main__':
         encoder.load_state_dict(torch.load(checkpoint))
 
     window_size = 2000
-    k_sampling = 3
     R1 = SIM_LOWER_R1
     R2 = SIM_UPPER_R2
 
