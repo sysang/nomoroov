@@ -33,7 +33,7 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         proportional_total = 0
         overall_error = 0
 
-        similarity_threshold1 = 0.33
+        similarity_threshold1 = 0.31
         correct1 = 0
         false_similarity1 = 0
         true_similarity1 = 0
@@ -151,18 +151,18 @@ if __name__ == '__main__':
     DEVICE = 'cuda'
     BATCH_SIZE = 512
     NUM_BATCHES = -1
-    # NUM_BATCHES = 200
+    NUM_BATCHES = 200
     CFG = CFG_V7
     CFG['batch_size'] = BATCH_SIZE
     CFG['device'] = DEVICE
 
     nlp = load_spacy()
 
-    checkpoint1 = 'tmp/checkpoints/v12/epoch8_encoder1'
-    checkpoint2 = 'tmp/checkpoints/v12/epoch8_encoder2'
+    # checkpoint1 = 'tmp/checkpoints/v12/epoch14_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/v12/epoch14_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    # checkpoint1 = 'tmp/checkpoints/batches/v12/batch60000_encoder1'
-    # checkpoint2 = 'tmp/checkpoints/batches/v12/batch60000_encoder2'
+    checkpoint1 = 'tmp/checkpoints/batches/v13/epoch17_batch90000_encoder1'
+    checkpoint2 = 'tmp/checkpoints/batches/v13/epoch17_batch90000_encoder1'
 
     dataset = 'processed-quora-duplicated-questions-test.csv'
     print(f'[INFO] evaluating dataset: {dataset}')
