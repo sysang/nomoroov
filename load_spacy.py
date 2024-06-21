@@ -15,8 +15,12 @@ def load_spacy(disable=['tagger', 'ner', 'parser', 'attribute_ruler', 'lemmatize
     return nlp
 
 
+def get_vector_zero_key(nlp):
+    return nlp.vocab.strings[VECTOR_ZERO_SYMBOL]
+
+
 def get_vector_zero_index(nlp):
-    vector_zero_key = nlp.vocab.strings[VECTOR_ZERO_SYMBOL]
+    vector_zero_key = get_vector_zero_key(nlp)
     vector_zero_idx = nlp.vocab.vectors.find(key=vector_zero_key)
     return vector_zero_idx
 

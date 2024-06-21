@@ -110,7 +110,7 @@ def create_data_pair(raw_data, Record, estimate_similarity, nlp, k_sampling,
             doc22 = nlp(text22)
             hashed22 = hash_string(text22)
 
-            if duplication_indexes.get((hashed11, hashed22), False):
+            if duplication_indexes.get((hashed11, hashed22), None) is not None:
                 caches.add((i, j))
                 caches.add((j, i))
 

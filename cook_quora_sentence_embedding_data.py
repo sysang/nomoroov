@@ -18,14 +18,14 @@ def iterate_data(file):
         reader = csv.reader(fd, delimiter='\t')
 
         for row in reader:
-            if len(row) != 3:
+            if len(row) != 6:
                 continue
 
-            sent1, sent2 = row[0].strip(), row[1].strip()
+            sent1, sent2, is_duplicate = row[3].strip(), row[4].strip(), row[5]
             if len(sent1.split()) < 3 or len(sent2.split()) < 3:
                 continue
 
-            yield sent1, sent2
+            yield sent1, sent2, is_duplicate
 
 
 def estimate_similarity_fn(duplication_indexes, r1,
@@ -38,8 +38,16 @@ def estimate_similarity_fn(duplication_indexes, r1,
         if hashed1 == hashed2:
             return (identical_threshold, 1)
 
-        if duplication_indexes.get((hashed1, hashed2), False):
+        is_duplicate = duplication_indexes.get((hashed1, hashed2), None)
+        if is_duplicate is not None and int(is_duplicate) == 1:
             return (propotional_threshold, 1)
+        elif is_duplicate is not None and int(is_duplicate) == 0 and model is None:
+            return (r2, propotional_threshold)
+        elif is_duplicate is not None and int(is_duplicate) == 0:
+            score = model.doc_similarity(doc1, doc2)
+            score = r2 if score > propotional_threshold else score
+            r1_prime = r2 if score > propotional_threshold else max(r2, score * 0.95)
+            return (r1_prime, propotional_threshold)
 
         if model is None:
             return (r1, r2)
@@ -59,8 +67,7 @@ def estimate_similarity_fn(duplication_indexes, r1,
 
 if __name__ == '__main__':
     datasets = {
-            '1': 'processed-quora-duplicated-questions-train.csv',
-            '2': 'processed-quora-duplicated-questions-test.csv',
+            '1': 'quora-duplicate-questions-train.tsv',
     }
 
     parser = argparse.ArgumentParser(
@@ -148,7 +155,7 @@ if __name__ == '__main__':
     duplication_indexes = {}
 
     while True:
-        sent1, sent2 = next(data_iter, (None, None))
+        sent1, sent2, is_duplicate = next(data_iter, (None, None, None))
 
         if sent1 is not None and sent2 is not None:
             doc1 = nlp(sent1)
@@ -171,7 +178,7 @@ if __name__ == '__main__':
             batch.append(sent2)
             hashed1 = hash_string(sent1)
             hashed2 = hash_string(sent2)
-            duplication_indexes[(hashed1, hashed2)] = True
+            duplication_indexes[(hashed1, hashed2)] = is_duplicate
             counter += 2
 
         if counter >= window_size or (sent1 is None and len(batch) > 0):
