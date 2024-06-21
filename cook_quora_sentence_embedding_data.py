@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target',
                         choices=list(datasets.keys()),
                         required=False, default='1')
-    parser.add_argument('-k', '--k_sampling', type=int, default=-5)
+    parser.add_argument('-k', '--k_sampling', type=int, default=2)
     parser.add_argument('-c', '--checkpoint', type=int, default=-1)
     parser.add_argument('-e', '--epoch', type=int, default=1)
     parser.add_argument('-i', '--iteration', type=int, default=0)
@@ -105,9 +105,18 @@ if __name__ == '__main__':
         encoder = SentenceEmbedding(CFG).to('cpu')
         encoder.load_state_dict(torch.load(checkpoint))
 
-    window_size = 2000
-    R1 = SIM_LOWER_R1
-    R2 = SIM_UPPER_R2
+    window_size = 2500
+    R1 = -0.05
+    R2 = 0.075
+    PROPOTIONAL_THRESHOLD = 0.91
+    IDENTICAL_THRESHOLD = 0.97
+
+    print(f'[INFO] window_size: {window_size}')
+    print(f'[INFO] R1: {R1}')
+    print(f'[INFO] R2: {R2}')
+    print(f'[INFO] propotional_threshold: {PROPOTIONAL_THRESHOLD}')
+    print(f'[INFO] identical_threshold: {IDENTICAL_THRESHOLD}')
+    print(f'[INFO] k_sampling: {k_sampling}')
 
     name = datasets[target]
     if no_inference:
@@ -167,8 +176,9 @@ if __name__ == '__main__':
 
         if counter >= window_size or (sent1 is None and len(batch) > 0):
             random_similarity = estimate_similarity_fn(duplication_indexes,
-                                                       model=encoder, r1=R1,
-                                                       r2=R2)
+                                                       model=encoder, r1=R1, r2=R2,
+                                                       propotional_threshold=PROPOTIONAL_THRESHOLD,
+                                                       identical_threshold=IDENTICAL_THRESHOLD)
             result = create_data_pair(batch, Record, random_similarity, nlp,
                                       k_sampling, max_length,
                                       duplication_indexes)
