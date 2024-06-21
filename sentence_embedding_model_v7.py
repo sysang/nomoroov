@@ -12,15 +12,15 @@ CFG_V7 = {
     'hidden_size1': 16,
     'hidden_size2': 16,
     'linear_size': 128,
-    'dropout': 0.67,
-    'asym_dropout': 0.61,
+    'dropout': 0.63,
+    'asym_dropout': 0.59,
     'num_layers1': 5,
     'num_layers2': 4,
     'device': 'cpu',
     'batch_size': 1,
     'fixed_sequence_length': 40,
-    'token_noise_magnitue': 1.7,
-    'sequence_noise_ratio': 0.21
+    'token_noise_magnitue': 1.1,
+    'sequence_noise_ratio': 0.19
 }
 
 
