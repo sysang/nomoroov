@@ -33,7 +33,7 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         proportional_total = 0
         overall_error = 0
 
-        similarity_threshold1 = 0.31
+        similarity_threshold1 = 0.29
         correct1 = 0
         false_similarity1 = 0
         true_similarity1 = 0
@@ -47,7 +47,7 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         false_perp2 = 0
         true_perp2 = 0
 
-        similarity_threshold3 = 0.83
+        similarity_threshold3 = 0.75
         correct3 = 0
         false_similarity3 = 0
         true_similarity3 = 0
@@ -188,11 +188,11 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    # checkpoint1 = 'tmp/checkpoints/v13/epoch21_encoder1'
-    # checkpoint2 = 'tmp/checkpoints/v13/epoch21_encoder2'
+    checkpoint1 = 'tmp/checkpoints/v15/epoch1_encoder1'
+    checkpoint2 = 'tmp/checkpoints/v15/epoch1_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    checkpoint1 = 'tmp/checkpoints/batches/v15/epoch1_batch280000_encoder1'
-    checkpoint2 = 'tmp/checkpoints/batches/v15/epoch1_batch280000_encoder2'
+    # checkpoint1 = 'tmp/checkpoints/batches/v15/epoch1_batch400000_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/batches/v15/epoch1_batch400000_encoder2'
 
     # dataset = 'processed-quora-duplicated-questions-train.csv'
     dataset = 'quora-duplicate-questions-test.tsv'
