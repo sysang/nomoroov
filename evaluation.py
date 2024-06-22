@@ -33,18 +33,26 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         proportional_total = 0
         overall_error = 0
 
-        similarity_threshold1 = 0.29
+        similarity_threshold1 = 0.31
         correct1 = 0
         false_similarity1 = 0
         true_similarity1 = 0
+        false_perp1 = 0
+        true_perp1 = 0
+
         similarity_threshold2 = 0.51
         correct2 = 0
         false_similarity2 = 0
         true_similarity2 = 0
+        false_perp2 = 0
+        true_perp2 = 0
+
         similarity_threshold3 = 0.83
         correct3 = 0
         false_similarity3 = 0
         true_similarity3 = 0
+        false_perp3 = 0
+        true_perp3 = 0
 
         for batch, data in enumerate(dataloader):
             if num_batches != -1 and batch >= num_batches:
@@ -80,6 +88,10 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
                     true_similarity1 += int(similarity > similarity_threshold1)
                     true_similarity2 += int(similarity > similarity_threshold2)
                     true_similarity3 += int(similarity > similarity_threshold3)
+
+                    false_perp1 += int(similarity <= similarity_threshold1)
+                    false_perp2 += int(similarity <= similarity_threshold2)
+                    false_perp3 += int(similarity <= similarity_threshold3)
                 else:
                     perpendicular_error += abs(similarity)
                     overall_error += abs(similarity)
@@ -88,6 +100,10 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
                     correct1 += int(similarity <= similarity_threshold1)
                     correct2 += int(similarity <= similarity_threshold2)
                     correct3 += int(similarity <= similarity_threshold3)
+
+                    true_perp1 += int(similarity <= similarity_threshold1)
+                    true_perp2 += int(similarity <= similarity_threshold2)
+                    true_perp3 += int(similarity <= similarity_threshold3)
 
                     false_similarity1 += int(similarity > similarity_threshold1)
                     false_similarity2 += int(similarity > similarity_threshold2)
@@ -126,6 +142,20 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         print(f'[EVALUATE] (sim) false pos:\t\t{false_ratio2:0.4f}\t(w.r.t threshold: {similarity_threshold2}, over {perpendicular_total} samples)')
         print(f'[EVALUATE] (sim) false pos:\t\t{false_ratio3:0.4f}\t(w.r.t threshold: {similarity_threshold3}, over {perpendicular_total} samples)')
 
+        perp_accuracy1 = 100 * true_perp1 / perpendicular_total
+        perp_accuracy2 = 100 * true_perp2 / perpendicular_total
+        perp_accuracy3 = 100 * true_perp3 / perpendicular_total
+        print(f'[EVALUATE] perpendicular acc:\t\t{perp_accuracy1:0.4f}\t(w.r.t threshold: {similarity_threshold1}, over {perpendicular_total} samples)')
+        print(f'[EVALUATE] perpendicular acc:\t\t{perp_accuracy2:0.4f}\t(w.r.t threshold: {similarity_threshold2}, over {perpendicular_total} samples)')
+        print(f'[EVALUATE] perpendicular acc:\t\t{perp_accuracy3:0.4f}\t(w.r.t threshold: {similarity_threshold3}, over {perpendicular_total} samples)')
+
+        false_perp_ratio1 = 100 * false_perp1 / proportional_total
+        false_perp_ratio2 = 100 * false_perp2 / proportional_total
+        false_perp_ratio3 = 100 * false_perp3 / proportional_total
+        print(f'[EVALUATE] (perp) false pos:\t\t{false_perp_ratio1:0.4f}\t(w.r.t threshold: {similarity_threshold1}, over {proportional_total} samples)')
+        print(f'[EVALUATE] (perp) false pos:\t\t{false_perp_ratio2:0.4f}\t(w.r.t threshold: {similarity_threshold2}, over {proportional_total} samples)')
+        print(f'[EVALUATE] (perp) false pos:\t\t{false_perp_ratio3:0.4f}\t(w.r.t threshold: {similarity_threshold3}, over {proportional_total} samples)')
+
         accuracy1 = 100 * correct1 / total_samples
         accuracy2 = 100 * correct2 / total_samples
         accuracy3 = 100 * correct3 / total_samples
@@ -161,10 +191,11 @@ if __name__ == '__main__':
     # checkpoint1 = 'tmp/checkpoints/v13/epoch21_encoder1'
     # checkpoint2 = 'tmp/checkpoints/v13/epoch21_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    checkpoint1 = 'tmp/checkpoints/batches/v14/epoch22_batch170000_encoder1'
-    checkpoint2 = 'tmp/checkpoints/batches/v14/epoch22_batch170000_encoder2'
+    checkpoint1 = 'tmp/checkpoints/batches/v15/epoch1_batch280000_encoder1'
+    checkpoint2 = 'tmp/checkpoints/batches/v15/epoch1_batch280000_encoder2'
 
-    dataset = 'processed-quora-duplicated-questions-train.csv'
+    # dataset = 'processed-quora-duplicated-questions-train.csv'
+    dataset = 'quora-duplicate-questions-test.tsv'
     print(f'[INFO] evaluating dataset: {dataset}')
 
     dataloader = create_evaluating_dataloader(dataset, DEVICE, BATCH_SIZE)
