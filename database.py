@@ -1,5 +1,6 @@
 import os
 import csv
+import random
 
 from peewee import SqliteDatabase, Model, BlobField
 import msgspec
@@ -54,14 +55,16 @@ def merge_databases():
             'processed-imdb-movie-rating-part-0',
             'processed-imdb-movie-rating-part-1',
             'reuters_headlines',
+            'processed-paws-train',
     ]
+    random.shuffle(datasets)
 
     dbname = 'sqlite_file'
-    dbfile = f'sentence_embedding_training_data/{dbname}.db'
+    dbfile = f'/tmp/sentence_embedding_training_data/{dbname}.db'
 
-    # if os.path.exists(dbfile):
-    #     print(f'[INFO] Removed database {dbfile}.')
-    #     os.remove(dbfile)
+    if os.path.exists(dbfile):
+        print(f'[INFO] Removed database {dbfile}.')
+        os.remove(dbfile)
 
     merged_db = SqliteDatabase(dbfile)
 

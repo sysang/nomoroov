@@ -46,4 +46,50 @@ gutenberg-project-book-part-1:
 gutenberg-project-book-part-2:
 	@python3 cook_sentence_embedding_data.py --target=16
 
+processed-paws-train:
+	@python3 cook_sentence_embedding_data.py --target=17
+
+urlsf_subset00_00:
+	@python3 cook_sentence_embedding_data.py --target=18
+
+urlsf_subset00_01:
+	@python3 cook_sentence_embedding_data.py --target=19
+
+urlsf_subset00_02:
+	@python3 cook_sentence_embedding_data.py --target=20
+
+urlsf_subset00_03:
+	@python3 cook_sentence_embedding_data.py --target=21
+
+urlsf_subset00_04:
+	@python3 cook_sentence_embedding_data.py --target=22
+
+urlsf_subset00_05:
+	@python3 cook_sentence_embedding_data.py --target=23
+
+urlsf_subset00_06:
+	@python3 cook_sentence_embedding_data.py --target=24
+
+urlsf_subset00_07:
+	@python3 cook_sentence_embedding_data.py --target=25
+
+urlsf_subset00_08:
+	@python3 cook_sentence_embedding_data.py --target=26
+
+urlsf_subset00_09:
+	@python3 cook_sentence_embedding_data.py --target=27
+
+urlsf_subset00_10:
+	@python3 cook_sentence_embedding_data.py --target=28
+
+urlsf_subset00_11:
+	@python3 cook_sentence_embedding_data.py --target=29
+
+urlsf_subset00_12:
+	@python3 cook_sentence_embedding_data.py --target=30
+
+urlsf_subset00_13:
+	@python3 cook_sentence_embedding_data.py --target=31
+
+
 

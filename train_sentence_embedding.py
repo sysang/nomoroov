@@ -150,12 +150,12 @@ IDENTICAL_THRESHOLD = 0.95
 FIXED_SEQUENCE_LENGTH = 40
 
 SWITCH = 1
-BATCH_SIZE = 100
+BATCH_SIZE = 64
 EPOCHS = 1
-CURRENT_EPOCH = 0
-DATASET_SIZE = 42881181
+CURRENT_EPOCH = 3
+DATASET_SIZE = 44436336
 NUM_WORKERS = 6
-CHECKPOINT_NUM = 15
+CHECKPOINT_NUM = 16
 
 # SWITCH = 0
 # BATCH_SIZE = 64
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     nlp = load_spacy()
 
     if switch != 0:
-        db_uri = 'sentence_embedding_training_data/sqlite_file.db'
+        db_uri = '/tmp/sentence_embedding_training_data/sqlite_file.db'
     else:
         db_uri = 'sentence_embedding_training_data/guardian_headlines.txt.db'
 
