@@ -188,11 +188,11 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    checkpoint1 = 'tmp/checkpoints/v16/epoch3_encoder1'
-    checkpoint2 = 'tmp/checkpoints/v16/epoch3_encoder2'
+    # checkpoint1 = 'tmp/checkpoints/v17/epoch5_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/v17/epoch5_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    # checkpoint1 = 'tmp/checkpoints/batches/v16/epoch4_batch640000_encoder1'
-    # checkpoint2 = 'tmp/checkpoints/batches/v16/epoch4_batch640000_encoder2'
+    checkpoint1 = 'tmp/checkpoints/batches/v17/epoch5_batch10000_encoder1'
+    checkpoint2 = 'tmp/checkpoints/batches/v17/epoch5_batch10000_encoder2'
 
     # dataset = 'guardian_headlines.txt'
     # dataset = 'cnbc_headlines.txt'
