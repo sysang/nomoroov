@@ -85,13 +85,13 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
                 p.requires_grad = False
             for p in self.encoder1.parameters():
                 p.requires_grad = False
+            for p in self.decode2.parameters():
+                p.requires_grad = False
 
         if inferring:
             self.compress_wv = self.compress_flexible_sequence
             self.dropout_ratio = 0.0
 
-            for p in self.decode2.parameters():
-                p.requires_grad = False
             for p in self.linear_out1.parameters():
                 p.requires_grad = False
             for p in self.linear_out2.parameters():

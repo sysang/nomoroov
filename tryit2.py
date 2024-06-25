@@ -1,6 +1,5 @@
 import torch
 
-from sentence_embedding_model import SentenceEmbedding
 from sentence_embedding_model_v7 import SentenceEmbeddingV7
 from train_sentence_embedding import CFG
 from load_spacy import load_spacy

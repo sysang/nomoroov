@@ -179,7 +179,7 @@ def create_evaluating_dataloader(dataset, device, batch_size):
 
 if __name__ == '__main__':
     DEVICE = 'cuda'
-    BATCH_SIZE = 512
+    BATCH_SIZE = 256
     # NUM_BATCHES = -1
     NUM_BATCHES = 200
     CFG = CFG_V7
@@ -188,16 +188,16 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    checkpoint1 = 'tmp/checkpoints/v17/epoch10_encoder1'
-    checkpoint2 = 'tmp/checkpoints/v17/epoch10_encoder2'
+    checkpoint1 = 'tmp/checkpoints/v19/epoch5_encoder1'
+    checkpoint2 = 'tmp/checkpoints/v19/epoch5_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    # checkpoint1 = 'tmp/checkpoints/batches/v17/epoch5_batch30000_encoder1'
-    # checkpoint2 = 'tmp/checkpoints/batches/v17/epoch5_batch30000_encoder2'
+    # checkpoint1 = 'tmp/checkpoints/batches/v19/epoch5_batch12600_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/batches/v19/epoch5_batch12600_encoder2'
 
     # dataset = 'guardian_headlines.txt'
     # dataset = 'cnbc_headlines.txt'
-    dataset = 'processed-quora-duplicated-questions-train.csv'
-    # dataset = 'quora-duplicate-questions-test.tsv'
+    # dataset = 'processed-quora-duplicated-questions-train.csv'
+    dataset = 'quora-duplicate-questions-test.tsv'
     print(f'[INFO] evaluating dataset: {dataset}')
 
     dataloader = create_evaluating_dataloader(dataset, DEVICE, BATCH_SIZE)
