@@ -162,7 +162,7 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         print(f'[EVALUATE] overall acc: \t\t{accuracy1:0.4f}\t(w.r.t threshold: {similarity_threshold1}, over {total_samples} samples)')
         print(f'[EVALUATE] overall acc: \t\t{accuracy2:0.4f}\t(w.r.t threshold: {similarity_threshold2}, over {total_samples} samples)')
         print(f'[EVALUATE] overall acc: \t\t{accuracy3:0.4f}\t(w.r.t threshold: {similarity_threshold3}, over {total_samples} samples)')
-        print(f'[EVALUATE] perpendicular / total:\t{(100 * perpendicular_total / total_samples):0.4f}')
+        print(f'[EVALUATE] proportional / total:\t{(100 * proportional_total / total_samples):0.4f}')
 
     return evaluate
 
@@ -188,16 +188,16 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    # checkpoint1 = 'tmp/checkpoints/v17/epoch5_encoder1'
-    # checkpoint2 = 'tmp/checkpoints/v17/epoch5_encoder2'
+    checkpoint1 = 'tmp/checkpoints/v17/epoch10_encoder1'
+    checkpoint2 = 'tmp/checkpoints/v17/epoch10_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
-    checkpoint1 = 'tmp/checkpoints/batches/v17/epoch5_batch10000_encoder1'
-    checkpoint2 = 'tmp/checkpoints/batches/v17/epoch5_batch10000_encoder2'
+    # checkpoint1 = 'tmp/checkpoints/batches/v17/epoch5_batch30000_encoder1'
+    # checkpoint2 = 'tmp/checkpoints/batches/v17/epoch5_batch30000_encoder2'
 
     # dataset = 'guardian_headlines.txt'
     # dataset = 'cnbc_headlines.txt'
-    # dataset = 'processed-quora-duplicated-questions-train.csv'
-    dataset = 'quora-duplicate-questions-test.tsv'
+    dataset = 'processed-quora-duplicated-questions-train.csv'
+    # dataset = 'quora-duplicate-questions-test.tsv'
     print(f'[INFO] evaluating dataset: {dataset}')
 
     dataloader = create_evaluating_dataloader(dataset, DEVICE, BATCH_SIZE)

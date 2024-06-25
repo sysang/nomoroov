@@ -70,7 +70,11 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
         self.norm = nn.BatchNorm1d(self.linear_size * self.num_layers2)
         self.dropout = nn.Dropout(p=self.dropout_ratio)
 
+        self.compress_wv = self.compress_fixed_sequence
+
         if finetuning or inferring:
+            self.apply_noise = self.bypass_applying_noise
+
             for p in self.compress1.parameters():
                 p.requires_grad = False
             for p in self.compress2.parameters():
@@ -84,7 +88,6 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
 
         if inferring:
             self.compress_wv = self.compress_flexible_sequence
-            self.apply_noise = self.bypass_applying_noise
             self.dropout_ratio = 0.0
 
             for p in self.decode2.parameters():
@@ -99,8 +102,6 @@ class SentenceEmbeddingV7(SentenceEmbeddingBase):
                 p.requires_grad = False
             for p in self.norm.parameters():
                 p.requires_grad = False
-        else:
-            self.compress_wv = self.compress_fixed_sequence
 
         self.cos = nn.CosineSimilarity(dim=1, eps=1e-6)
 

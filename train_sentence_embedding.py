@@ -126,7 +126,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
         optimizer2.step()
         optimizer2.zero_grad()
 
-        if (batch + 1) % 1000 == 0 or remains < BATCH_SIZE:
+        if (batch + 1) % 100 == 0 or remains < BATCH_SIZE:
             _loss1, _loss2, total_loss  = (
                     loss1.item(), loss2.item(), loss.item())
 
@@ -135,7 +135,7 @@ batch_size: {batch_size}, BATCH_SIZE: {BATCH_SIZE}')
             print(f'{checkpoint_num}. loss1:{_loss1:0.5f}  loss2:{_loss2:0.5f} \
 total:{total_loss:0.5f}  {batch}/{current}/{dataset_size} {ts}')
 
-        if (batch + 1) % 10000 == 0 or remains < BATCH_SIZE:
+        # if (batch + 1) % 10000 == 0 or remains < BATCH_SIZE:
             torch.save(encoder1.state_dict(),
                     f'tmp/checkpoints/batches/v{checkpoint_num}/epoch{epoch}_batch{batch + 1}_encoder1')
             torch.save(encoder2.state_dict(),
@@ -150,12 +150,12 @@ IDENTICAL_THRESHOLD = 0.95
 FIXED_SEQUENCE_LENGTH = 40
 
 SWITCH = 1
-BATCH_SIZE = 64
+BATCH_SIZE = 2500
 EPOCHS = 1
-CURRENT_EPOCH = 4
-DATASET_SIZE = 4431168
-NUM_WORKERS = 6
-CHECKPOINT_NUM = 17
+CURRENT_EPOCH = 3
+DATASET_SIZE = 44436336
+NUM_WORKERS = 7
+CHECKPOINT_NUM = 18
 
 # SWITCH = 0
 # BATCH_SIZE = 64
@@ -165,7 +165,7 @@ CHECKPOINT_NUM = 17
 # NUM_WORKERS = 1
 # CHECKPOINT_NUM = 99
 
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0002
 DEVICE = 'cuda'
 
 
@@ -181,11 +181,7 @@ if __name__ == '__main__':
     nlp = load_spacy()
 
     if switch != 0:
-        # db_uri = '/tmp/sentence_embedding_training_data/sqlite_file.db'
-        db_uri = 'sentence_embedding_training_data/urlsf_subset00_00.txt.db'    # epoch 5
-        # db_uri = 'sentence_embedding_training_data/urlsf_subset00_01.txt.db'    # epoch 6
-        # db_uri = 'sentence_embedding_training_data/urlsf_subset00_02.txt.db'    # epoch 7
-        # db_uri = 'sentence_embedding_training_data/urlsf_subset00_03.txt.db'    # epoch 8
+        db_uri = '/archives/sentence_embedding_training_data/sqlite_file.db'
     else:
         db_uri = 'sentence_embedding_training_data/guardian_headlines.txt.db'
 
