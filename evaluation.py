@@ -33,7 +33,7 @@ def evaluate_fn(ModelClass, config, nlp, dataloader, num_batches=1):
         proportional_total = 0
         overall_error = 0
 
-        similarity_threshold1 = 0.35
+        similarity_threshold1 = 0.39
         correct1 = 0
         false_similarity1 = 0
         true_similarity1 = 0
@@ -188,8 +188,8 @@ if __name__ == '__main__':
 
     nlp = load_spacy()
 
-    checkpoint1 = 'tmp/checkpoints/v19/epoch5_encoder1'
-    checkpoint2 = 'tmp/checkpoints/v19/epoch5_encoder2'
+    checkpoint1 = 'tmp/checkpoints/v19/epoch7_encoder1'
+    checkpoint2 = 'tmp/checkpoints/v19/epoch7_encoder2'
     # checkpoint1 = 'tmp/finetuned/iterations/v3_epoch69_iter0'
     # checkpoint1 = 'tmp/checkpoints/batches/v19/epoch5_batch12600_encoder1'
     # checkpoint2 = 'tmp/checkpoints/batches/v19/epoch5_batch12600_encoder2'

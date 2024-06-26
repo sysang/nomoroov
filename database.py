@@ -44,18 +44,16 @@ def get_model_class(db):
 
 def merge_databases():
     datasets = [
-            # 'wikidata-text-part-0',
-            # 'wikidata-text-part-1',
-            # 'wikidata-text-part-2',
-            # 'wikidata-text-part-3',
-            # 'wikidata-text-part-4',
-            # 'wikidata-text-part-5',
-            # 'abcnews-date-text-part-0',
-            # 'abcnews-date-text-part-1',
-            # 'processed-imdb-movie-rating-part-0',
-            # 'processed-imdb-movie-rating-part-1',
-            # 'reuters_headlines',
-            # 'processed-paws-train',
+            'wikidata-text-part-0',
+            'wikidata-text-part-1',
+            'wikidata-text-part-2',
+            'wikidata-text-part-3',
+            'wikidata-text-part-4',
+            'wikidata-text-part-5',
+            'abcnews-date-text-part-0',
+            'abcnews-date-text-part-1',
+            'processed-imdb-movie-rating-part-0',
+            'processed-imdb-movie-rating-part-1',
             'urlsf_subset00_00',
             'urlsf_subset00_01',
             'urlsf_subset00_02',
@@ -67,11 +65,14 @@ def merge_databases():
             'urlsf_subset00_08',
             'urlsf_subset00_09',
             'urlsf_subset00_10',
+            'urlsf_subset00_11',
+            'urlsf_subset00_12',
+            'urlsf_subset00_13',
     ]
     random.shuffle(datasets)
 
-    # dbname = 'sqlite_file'
-    dbname = 'urlsf_subset00'
+    dbname = 'sqlite_file'
+    # dbname = 'urlsf_subset00'
     dbfile = f'/archives/sentence_embedding_training_data/{dbname}.db'
 
     if os.path.exists(dbfile):
